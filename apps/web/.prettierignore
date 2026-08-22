@@ -1,0 +1,8 @@
+# Generated or vendored — reformatting these fights the tool that writes them.
+.next/
+out/
+test-results/
+playwright-report/
+next-env.d.ts
+pnpm-lock.yaml
+components/ui/
