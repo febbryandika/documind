@@ -1,0 +1,3 @@
+# Generated — drizzle writes migrations, bun writes the lockfile.
+drizzle/
+bun.lock
