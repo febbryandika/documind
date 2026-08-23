@@ -1,3 +1,8 @@
+import type { Metadata } from "next";
+import { SignInForm } from "@/components/sign-in-form";
+
+export const metadata: Metadata = { title: "Sign in" };
+
 export default function SignInPage() {
-  return <p className="text-muted-foreground">Sign in — SPEC §3.1</p>;
+  return <SignInForm />;
 }

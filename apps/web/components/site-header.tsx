@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { UserMenu } from "@/components/user-menu";
 
 export function SiteHeader() {
   return (
@@ -7,6 +8,7 @@ export function SiteHeader() {
         <Link href="/" className="font-semibold tracking-tight">
           DocuMind
         </Link>
+        <UserMenu />
       </div>
     </header>
   );
