@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { auth, webOrigin } from "./auth";
 import { sessionMiddleware, type SessionEnv } from "./middleware/session";
+import { documentsRoutes } from "./routes/documents";
 
 // Routes must be chained, not registered as separate `app.get(...)` statements:
 // Hono RPC only infers `AppType` from the chained builder.
@@ -17,7 +18,8 @@ const app = new Hono<SessionEnv>()
   .get("/me", sessionMiddleware, (c) => {
     const user = c.get("user");
     return c.json({ id: user.id, email: user.email, name: user.name });
-  });
+  })
+  .route("/documents", documentsRoutes);
 
 export { app };
 

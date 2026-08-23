@@ -1,3 +1,9 @@
-export default function DocumentDetailPage() {
-  return <p className="text-muted-foreground">Document detail — SPEC §3.4</p>;
+import { DocumentDetail } from "@/components/document-detail";
+
+export default async function DocumentDetailPage({
+  params,
+}: PageProps<"/documents/[id]">) {
+  const { id } = await params;
+
+  return <DocumentDetail id={id} />;
 }
