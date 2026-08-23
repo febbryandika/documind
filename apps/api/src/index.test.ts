@@ -9,6 +9,12 @@ vi.mock("./auth", () => ({
   auth: { api: { getSession }, handler: vi.fn() },
   webOrigin: "http://localhost:3000",
 }));
+// index.ts also mounts ./routes/documents, which imports ./db directly, so the
+// db module needs stubbing too. The document routes have their own suite in
+// src/routes/documents.test.ts; here it only has to not open a pool.
+vi.mock("./db", () => ({
+  db: { select: vi.fn(), insert: vi.fn(), delete: vi.fn() },
+}));
 
 import { app } from "./index";
 

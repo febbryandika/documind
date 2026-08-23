@@ -1,3 +1,8 @@
+import type { Metadata } from "next";
+import { UploadForm } from "@/components/upload-form";
+
+export const metadata: Metadata = { title: "Upload" };
+
 export default function UploadPage() {
-  return <p className="text-muted-foreground">Upload — SPEC §3.2</p>;
+  return <UploadForm />;
 }

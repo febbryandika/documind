@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ type Me = { id: string; email: string; name: string };
 // credentials, and sessionMiddleware resolves it (SPEC §5, §14).
 export function UserMenu() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { data: session } = authClient.useSession();
   const [me, setMe] = useState<Me | null>(null);
   const userId = session?.user.id;
@@ -35,6 +37,11 @@ export function UserMenu() {
 
   async function signOut() {
     await authClient.signOut();
+    // The document cache outlives the session otherwise, so the next person to
+    // sign in on this browser sees the previous account's documents until a
+    // refetch lands. The API is correctly scoped either way — this is purely a
+    // client-side leak, and it is why sign-out has to drop the whole cache.
+    queryClient.clear();
     router.push("/sign-in");
     router.refresh();
   }
