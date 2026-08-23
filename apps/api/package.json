@@ -8,17 +8,22 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:generate": "echo 'TODO: bun drizzle-kit generate — SPEC §4, build order step 1'",
-    "db:migrate": "echo 'TODO: bun drizzle-kit migrate — SPEC §4, build order step 1'",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
     "db:seed": "bun run src/db/seed.ts",
     "eval": "bun run eval/run.ts"
   },
   "dependencies": {
-    "hono": "^4.13.3"
+    "@paralleldrive/cuid2": "^3.3.0",
+    "better-auth": "^1.7.1",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.13.3",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/bun": "^1.4.0",
+    "drizzle-kit": "^0.31.10",
     "eslint": "^10.9.0",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.6",
