@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@api/*": ["../api/src/*"]
     },
     "noUncheckedIndexedAccess": true
   },
