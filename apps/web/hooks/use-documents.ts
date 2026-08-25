@@ -55,6 +55,13 @@ export function useDocuments(params: DocumentListParams) {
     // Paging swaps the query key, which would otherwise blank the grid on every
     // click. Keeping the previous page visible makes pagination feel instant.
     placeholderData: keepPreviousData,
+    // Mirrors useDocument: poll only while something on this page is still
+    // ingesting, and return false once nothing is, so a settled list stops its
+    // timer entirely rather than polling for the rest of the session.
+    refetchInterval: (query) =>
+      query.state.data?.items.some((item) => item.status === "processing")
+        ? 2000
+        : false,
   });
 }
 

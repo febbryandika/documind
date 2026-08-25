@@ -6,6 +6,7 @@ import * as z from "zod";
 import { db } from "../db";
 import { documents } from "../db/schema";
 import { sessionMiddleware, type SessionEnv } from "../middleware/session";
+import { enqueueIngest } from "../rag/ingest";
 
 export const CATEGORIES = ["contract", "manual", "procedure", "other"] as const;
 export const STATUSES = ["processing", "ready", "failed"] as const;
@@ -102,8 +103,8 @@ export const documentsRoutes = new Hono<SessionEnv>()
     return c.json({ items, total: totals[0]?.value ?? 0, page, limit });
   })
 
-  // SPEC §3.2 steps 1-2. Ingest lands in build-order step 5; until then the row
-  // stays 'processing' forever, which is the expected end state for this phase.
+  // SPEC §3.2 — insert a 'processing' row, answer 202, and hand the buffer to
+  // the in-process worker. The row is what reports progress from here on.
   .post("/", limitBodySize, zValidator("form", uploadForm), async (c) => {
     const { file, category } = c.req.valid("form");
 
@@ -114,13 +115,11 @@ export const documentsRoutes = new Hono<SessionEnv>()
       return c.json({ error: "File must be 10MB or smaller" }, 413);
     }
 
-    // Not file.slice(): bun-types omits slice() from its Blob interface. Reading
-    // the whole buffer costs nothing extra here — parseBody has already
-    // materialised it, and limitBodySize bounds it to 10MB.
-    const header = new Uint8Array(await file.arrayBuffer()).subarray(
-      0,
-      PDF_MAGIC.length,
-    );
+    // Not file.slice(): bun-types omits slice() from its Blob interface. The
+    // whole buffer is wanted anyway — the ingest worker takes it below, and
+    // this is the only copy, since there is no blob storage (SPEC §1).
+    const data = new Uint8Array(await file.arrayBuffer());
+    const header = data.subarray(0, PDF_MAGIC.length);
     if (new TextDecoder().decode(header) !== PDF_MAGIC) {
       return c.json({ error: "That file is not a PDF" }, 415);
     }
@@ -136,8 +135,10 @@ export const documentsRoutes = new Hono<SessionEnv>()
 
     if (!row) return c.json({ error: "Could not create the document" }, 500);
 
-    // The buffer is intentionally dropped here — there is no blob storage
-    // (SPEC §1), and nothing reads the PDF until ingest exists.
+    // SPEC §3.2 step 3 — deliberately not awaited. The 202 goes out now, and
+    // ingest reports its own failures on the row rather than in this response.
+    void enqueueIngest(row.id, data);
+
     return c.json(row, 202);
   })
 

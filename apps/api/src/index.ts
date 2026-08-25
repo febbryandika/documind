@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { auth, webOrigin } from "./auth";
 import { sessionMiddleware, type SessionEnv } from "./middleware/session";
+import { failStaleIngests } from "./rag/ingest";
 import { documentsRoutes } from "./routes/documents";
 
 // Routes must be chained, not registered as separate `app.get(...)` statements:
@@ -25,6 +26,19 @@ export { app };
 
 // SPEC §5 — apps/web imports this *type only* to build the hc<AppType> client.
 export type AppType = typeof app;
+
+// SPEC §3.2 — a process that died mid-ingest leaves rows stuck in 'processing'
+// with no worker behind them, and the detail page polls such a row forever.
+// Guarded on import.meta.main so it fires for `bun run src/index.ts` but not
+// under vitest, where the test file is the entrypoint and node leaves
+// import.meta.main undefined. Read through a cast rather than directly: that
+// flag is Bun's, and apps/web typechecks this file via its type-only AppType
+// import (SPEC §5) without bun types on its side.
+if ((import.meta as { main?: boolean }).main) {
+  void failStaleIngests().then((swept) => {
+    if (swept > 0) console.log(`Failed ${swept} document(s) left by a restart`);
+  });
+}
 
 export default {
   port: Number(process.env.PORT ?? 3001),

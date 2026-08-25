@@ -7,16 +7,22 @@ import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 // Bun does); ../db is mocked because these routes query drizzle directly and
 // the point of the suite is the guards, not Postgres. vi.hoisted is required
 // because vi.mock is hoisted above the imports.
-const { getSession, db } = vi.hoisted(() => ({
+const { getSession, db, enqueueIngest } = vi.hoisted(() => ({
   getSession: vi.fn(),
   db: {
     select: vi.fn(),
     insert: vi.fn(),
     delete: vi.fn(),
   },
+  enqueueIngest: vi.fn(() => Promise.resolve()),
 }));
 vi.mock("../auth", () => ({ auth: { api: { getSession } } }));
 vi.mock("../db", () => ({ db }));
+// The upload route dispatches to the ingest worker, which pulls in unpdf and
+// the AI SDK. Mocking it keeps this suite about the upload guards — and stops a
+// real ingest running against the stub db above, where it would fail inside its
+// own catch and be swallowed rather than surface as a failing assertion.
+vi.mock("../rag/ingest", () => ({ enqueueIngest }));
 
 import { documentFilters, documentsRoutes } from "./documents";
 import { documents } from "../db/schema";
@@ -106,6 +112,7 @@ describe("session guard", () => {
       expect(db.select).not.toHaveBeenCalled();
       expect(db.insert).not.toHaveBeenCalled();
       expect(db.delete).not.toHaveBeenCalled();
+      expect(enqueueIngest).not.toHaveBeenCalled();
     },
   );
 });
@@ -262,6 +269,7 @@ describe("POST /documents", () => {
 
     expect(res.status).toBe(415);
     expect(db.insert).not.toHaveBeenCalled();
+    expect(enqueueIngest).not.toHaveBeenCalled();
   });
 
   // The multipart Content-Type is attacker-controlled, so the magic bytes are
@@ -278,6 +286,7 @@ describe("POST /documents", () => {
       error: "That file is not a PDF",
     });
     expect(db.insert).not.toHaveBeenCalled();
+    expect(enqueueIngest).not.toHaveBeenCalled();
   });
 
   it("rejects an upload larger than 10MB before parsing the body", async () => {
@@ -293,6 +302,7 @@ describe("POST /documents", () => {
 
     expect(res.status).toBe(413);
     expect(db.insert).not.toHaveBeenCalled();
+    expect(enqueueIngest).not.toHaveBeenCalled();
   });
 
   it("rejects a request with no file part", async () => {
@@ -303,6 +313,7 @@ describe("POST /documents", () => {
 
     expect(res.status).toBe(400);
     expect(db.insert).not.toHaveBeenCalled();
+    expect(enqueueIngest).not.toHaveBeenCalled();
   });
 
   it("rejects an unknown category", async () => {
@@ -310,6 +321,39 @@ describe("POST /documents", () => {
 
     expect(res.status).toBe(400);
     expect(db.insert).not.toHaveBeenCalled();
+    expect(enqueueIngest).not.toHaveBeenCalled();
+  });
+
+  // The whole buffer, not the five bytes the magic-byte check read — this is
+  // the only copy of the PDF, since there is no blob storage (SPEC §1).
+  it("hands the whole uploaded buffer to the ingest worker", async () => {
+    db.insert.mockReturnValueOnce(chain([ROW]));
+    const file = pdf();
+    const bytes = new Uint8Array(await file.arrayBuffer());
+
+    await upload(file);
+
+    expect(enqueueIngest).toHaveBeenCalledWith(ROW.id, bytes);
+  });
+
+  // SPEC §3.2 — ingest is a multi-second job, so the 202 cannot wait on it.
+  it("responds 202 without waiting for ingest to finish", async () => {
+    db.insert.mockReturnValueOnce(chain([ROW]));
+    // Never settles: an awaited dispatch would hang this request instead.
+    enqueueIngest.mockReturnValueOnce(new Promise<void>(() => {}));
+
+    const res = await upload(pdf());
+
+    expect(res.status).toBe(202);
+  });
+
+  it("does not dispatch when the row could not be created", async () => {
+    db.insert.mockReturnValueOnce(chain([]));
+
+    const res = await upload(pdf());
+
+    expect(res.status).toBe(500);
+    expect(enqueueIngest).not.toHaveBeenCalled();
   });
 });
 
