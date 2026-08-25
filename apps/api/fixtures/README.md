@@ -1,18 +1,24 @@
 # Fixture documents
 
-Sample operational documents used by the chunking and extraction tests, and
-later by the retrieval eval (SPEC §9). Both the `.html` source and the generated
-`.pdf` are committed — the PDFs are binaries a reviewer cannot diff, so the text
-they were made from lives next to them.
+Sample operational documents used by the chunking and extraction tests, and by
+the retrieval eval (SPEC §9). Both the `.html` source and the generated `.pdf`
+are committed — the PDFs are binaries a reviewer cannot diff, so the text they
+were made from lives next to them.
 
-| File | Language | Pages | Notes |
-|---|---|---|---|
-| `warehouse-safety.pdf` | English | 4 | Cold-storage PPE is on page 3 |
-| `supplier-contract.pdf` | Japanese | 4 | Payment terms (30 日) are on page 3 |
-| `scanned-no-text.pdf` | — | 1 | Drawn entirely in CSS, so it has no text layer |
+| File | Language | Pages | Chunks | Anchor phrase |
+|---|---|---|---|---|
+| `warehouse-safety.pdf` | English | 10 | 20 | "insulated freezer jacket", page 6 |
+| `supplier-contract.pdf` | Japanese | 12 | 26 | 「支払いサイトは30日」, page 5 |
+| `scanned-no-text.pdf` | — | 1 | — | drawn in CSS, so it has no text layer |
 
 `src/rag/extract.test.ts` asserts those page numbers, which is what proves the
-array position unpdf returns maps to the printed page a citation refers to.
+array position unpdf returns maps to the printed page a citation refers to. Each
+anchor phrase occurs exactly once in its document.
+
+Pages carry two to three chunks each, so a top-5 retrieval is a real filter
+rather than a pass-through, and consecutive chunks within a page genuinely
+overlap — 14 of 14 same-page pairs in the Japanese document do. Both properties
+matter for the eval to mean anything.
 
 ## Regenerating
 
@@ -31,22 +37,24 @@ done
 `file://` path and today's date into the text layer of every page, and those
 strings end up inside the chunks and their embeddings.
 
-Two things to know about the text layer Chrome produces, both visible via
-`bun run dump-chunks fixtures/<file>.pdf --raw`:
+Page counts are asserted by the tests, so if an edit reflows the content past a
+page boundary the suite will say so. Check `.page` divs still fit one physical
+page each after any substantial edit.
 
-- Some kanji are written as Kangxi radical code points (支 as ⽀, 日 as ⽇). They
-  render identically but compare unequal, so `extract.ts` normalises those two
-  Unicode blocks back to ideographs. Without it a question about 支払い could
-  never match a chunk containing ⽀払い.
-- Hard line-wrap newlines land mid-sentence and there are no blank lines at all,
-  so the paragraph tier of `chunkPage` never fires on these files and everything
-  is packed at sentence granularity. Left as-is deliberately: rejoining wrapped
-  lines cannot distinguish a heading break from a wrap break.
+## What the text layer actually looks like
 
-## Size
+Both visible via `bun run dump-chunks fixtures/<file>.pdf --raw`:
 
-These are deliberately short. Each page currently fits inside one chunk, so the
-whole of each document is 4 chunks. That is fine for the unit tests, but **the
-retrieval eval (SPEC §9, build-order step 8) needs longer documents to mean
-anything** — with 4 chunks in a document, a top-5 search returns all of them and
-hit-rate@5 is 100% by construction. Grow these before writing `golden.json`.
+- **Kanji arrive as radical code points.** 支 is written as ⽀ (U+2F40), 日 as ⽇,
+  民 as ⺠. They render identically and compare unequal, so `extract.ts`
+  normalises them — without it a question about 支払い could never match a chunk
+  containing ⽀払い. Kangxi Radicals (U+2F00–2FDF) decompose under NFKC in 214 of
+  224 cases; the CJK Radicals Supplement (U+2E80–2EFF) decomposes in only 2 of
+  128, so those are handled by an explicit table in `extract.ts` covering the
+  substitutions actually observed. The extraction test asserts no radical
+  survives, so a new one fails the suite rather than corrupting retrieval.
+- **Hard line-wrap newlines land mid-sentence and there are no blank lines at
+  all**, so the paragraph tier of `chunkPage` never fires on these files and
+  everything is packed at sentence granularity. Left as-is deliberately:
+  rejoining wrapped lines cannot distinguish a heading break from a wrap break,
+  so headings would be glued onto the paragraph that follows them.

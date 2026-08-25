@@ -11,17 +11,33 @@ export const NO_TEXT_ERROR = "No extractable text — is this a scanned PDF?";
 
 export type ExtractedPdf = { totalPages: number; pages: string[] };
 
-// Chrome's PDF export maps a number of common kanji onto Kangxi radical code
-// points — 支 (U+652F) is written as ⽀ (U+2F40), 日 as ⽇, 金 as ⾦. They render
+// Chrome's PDF export maps a number of common kanji onto CJK radical code
+// points — 支 (U+652F) is written as ⽀ (U+2F40), 日 as ⽇, 民 as ⺠. They render
 // identically and compare unequal, so a question asking about 支払い would never
 // match a chunk containing ⽀払い, and the radicals also fall outside the CJK
-// class in chunk.ts and get costed as Latin. NFKC is applied to these two blocks
-// only: run over the whole string it would also rewrite ．！？ into .!?, which
-// are the Japanese sentence boundaries the chunker splits on.
+// class in chunk.ts and get costed as Latin.
 const CJK_RADICALS = /[⺀-⻿⼀-⿟]/g;
 
+// Kangxi Radicals (U+2F00-2FDF) carry a compatibility decomposition to the
+// unified ideograph in 214 of 224 cases, so NFKC handles that block. It is
+// applied per matched character rather than to the whole string: run over
+// everything, NFKC would also rewrite ．！？ into .!?, which are the Japanese
+// sentence boundaries chunk.ts splits on.
+//
+// CJK Radicals Supplement (U+2E80-2EFF) is the awkward one — only 2 of its 128
+// characters decompose, so NFKC leaves the rest untouched and the standard
+// library offers no general mapping. Those are listed here explicitly, and only
+// where the substitution has actually been seen in a document: guessing at a
+// radical's ideograph would corrupt text that is currently correct.
+// extract.test.ts asserts that no radical survives in the Japanese fixture, so
+// a new one surfaces as a failing test rather than as silently broken retrieval.
+const RADICAL_EXCEPTIONS = new Map([["⺠", "民"]]);
+
 const normalizeRadicals = (s: string) =>
-  s.replace(CJK_RADICALS, (ch) => ch.normalize("NFKC"));
+  s.replace(
+    CJK_RADICALS,
+    (ch) => RADICAL_EXCEPTIONS.get(ch) ?? ch.normalize("NFKC"),
+  );
 
 /**
  * unpdf narrowed to what ingest needs: one string per page, plus the count for

@@ -13,8 +13,8 @@ function fixture(name: string) {
 
 describe("extractPdfText", () => {
   it.each([
-    ["warehouse-safety.pdf", 4],
-    ["supplier-contract.pdf", 4],
+    ["warehouse-safety.pdf", 10],
+    ["supplier-contract.pdf", 12],
   ] as const)("returns one string per page of %s", async (name, expected) => {
     const { totalPages, pages } = await extractPdfText(await fixture(name));
 
@@ -25,10 +25,11 @@ describe("extractPdfText", () => {
 
   // Page numbers are what citations resolve against (SPEC §3.4), so the mapping
   // from array position to printed page has to be exact — not merely present.
-  // Each phrase below sits on page 3 of its fixture and nowhere else.
+  // Each phrase below sits on exactly one page of its fixture, deep enough into
+  // the document that an off-by-one or a collapsed page would be obvious.
   it.each([
-    ["warehouse-safety.pdf", "insulated freezer jacket", 3],
-    ["supplier-contract.pdf", "支払いサイトは30日", 3],
+    ["warehouse-safety.pdf", "insulated freezer jacket", 6],
+    ["supplier-contract.pdf", "支払いサイトは30日", 5],
   ] as const)(
     "keeps %s's text on the page it was printed on",
     async (name, phrase, page) => {
@@ -45,7 +46,12 @@ describe("extractPdfText", () => {
   // Chrome's PDF export writes 支 as the Kangxi radical ⽀ (U+2F40) and 日 as ⽇.
   // They render identically and compare unequal, so without normalisation a
   // question about 支払い could never retrieve a chunk containing ⽀払い.
-  it("normalises Kangxi radicals back to CJK ideographs", async () => {
+  //
+  // This also guards the exception table: 民 comes back as ⺠ (U+2EA0), which is
+  // in the CJK Radicals Supplement and has no NFKC decomposition, so NFKC alone
+  // leaves it in place. If a future fixture edit introduces another supplement
+  // radical, this test is what reports it.
+  it("normalises CJK radicals back to ideographs", async () => {
     const { pages } = await extractPdfText(
       await fixture("supplier-contract.pdf"),
     );
@@ -58,6 +64,7 @@ describe("extractPdfText", () => {
 
     expect(radicals).toEqual([]);
     expect(text).toContain("支払い");
+    expect(text).toContain("民事再生手続開始");
   });
 
   // SPEC §3.2 — the failure the user is expected to recognise and act on. The
