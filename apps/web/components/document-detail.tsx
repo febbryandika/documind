@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon, Trash2Icon } from "lucide-react";
+import { ChatThread } from "@/components/chat-thread";
 import { DeleteDocumentDialog } from "@/components/delete-document-dialog";
 import { DocumentStatusBadge } from "@/components/document-status-badge";
 import { Button } from "@/components/ui/button";
@@ -102,10 +103,7 @@ export function DocumentDetail({ id }: { id: string }) {
               </p>
             </div>
           ) : (
-            <p className="text-muted-foreground text-sm">
-              Asking questions about this document arrives in a later step (SPEC
-              §3.4).
-            </p>
+            <ChatThread documentId={document.id} />
           )}
         </CardContent>
       </Card>
