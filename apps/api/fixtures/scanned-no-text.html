@@ -1,0 +1,25 @@
+<!--
+  Source for scanned-no-text.pdf — a PDF with no text layer at all, standing in
+  for a scanned document. Everything on the page is drawn with CSS, so pdf.js
+  finds nothing to extract. Regenerate after editing:
+
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+    --headless --disable-gpu --no-pdf-header-footer \
+    --print-to-pdf=scanned-no-text.pdf \
+    "file://$PWD/scanned-no-text.html"
+-->
+<meta charset="utf-8" />
+<title>Scanned Document</title>
+<style>
+  @page { margin: 20mm; }
+  body { margin: 0; }
+  .bar { background: #333; height: 6mm; margin: 4mm 0; }
+  .bar.short { width: 40%; } .bar.mid { width: 70%; }
+  .block { background: #bbb; height: 45mm; margin: 8mm 0; }
+</style>
+<div class="bar mid"></div>
+<div class="bar"></div>
+<div class="bar short"></div>
+<div class="block"></div>
+<div class="bar"></div>
+<div class="bar mid"></div>
