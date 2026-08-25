@@ -24,8 +24,9 @@ export function UserMenu() {
 
     const controller = new AbortController();
 
-    // A plain effect on purpose: TanStack Query arrives in Phase 4 for the
-    // document list, and one request does not justify a provider tree yet.
+    // Still a plain effect now that the QueryClientProvider exists: this is a
+    // one-shot probe of the session, not server state any other component
+    // reads, so there is nothing for a shared cache to deduplicate or reuse.
     api.me
       .$get({}, { init: { signal: controller.signal } })
       .then((res) => (res.ok ? res.json() : null))
