@@ -37,7 +37,7 @@ export function DocumentCard({ document }: { document: DocumentSummary }) {
             <p className="text-muted-foreground mt-1 text-sm">
               {CATEGORY_LABELS[document.category as Category]}
               {" · "}
-              {/* pageCount stays null until ingest runs (build-order step 5). */}
+              {/* pageCount stays null until ingest has parsed the PDF. */}
               {document.pageCount === null
                 ? "Pages pending"
                 : `${document.pageCount} ${document.pageCount === 1 ? "page" : "pages"}`}

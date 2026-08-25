@@ -85,8 +85,8 @@ export function DocumentDetail({ id }: { id: string }) {
       <Card>
         <CardContent>
           {document.status === "processing" ? (
-            // Ingest lands in build-order step 5; until then this is where a
-            // freshly uploaded document sits, polling every 2s.
+            // Where a freshly uploaded document sits while the in-process
+            // ingest worker runs, polling every 2s until the status flips.
             <p className="text-muted-foreground text-sm">
               Extracting text from this document. The status updates on its own.
             </p>
