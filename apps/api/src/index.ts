@@ -3,6 +3,7 @@ import { cors } from "hono/cors";
 import { auth, webOrigin } from "./auth";
 import { sessionMiddleware, type SessionEnv } from "./middleware/session";
 import { failStaleIngests } from "./rag/ingest";
+import { chatRoutes } from "./routes/chat";
 import { documentsRoutes } from "./routes/documents";
 
 // Routes must be chained, not registered as separate `app.get(...)` statements:
@@ -20,12 +21,20 @@ const app = new Hono<SessionEnv>()
     const user = c.get("user");
     return c.json({ id: user.id, email: user.email, name: user.name });
   })
-  .route("/documents", documentsRoutes);
+  .route("/documents", documentsRoutes)
+  // Mounted at the same prefix on purpose: /:id/chat and /:id/messages belong
+  // to the document they hang off, but they are a different concern from CRUD.
+  // Hono merges the two schemas, so AppType still carries both.
+  .route("/documents", chatRoutes);
 
 export { app };
 
 // SPEC §5 — apps/web imports this *type only* to build the hc<AppType> client.
 export type AppType = typeof app;
+
+// The one other type apps/web imports. It describes the shape of the chat
+// stream's data-sources part, which no route signature can express.
+export type { DocumentUIMessage, Source } from "./routes/chat";
 
 // SPEC §3.2 — a process that died mid-ingest leaves rows stuck in 'processing'
 // with no worker behind them, and the detail page polls such a row forever.

@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dump-chunks": "bun run dump-chunks.ts",
+    "dump-retrieval": "bun run dump-retrieval.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "bun run src/db/seed.ts",
