@@ -15,6 +15,7 @@ app uses.
 
 ```bash
 docker compose --profile eval up -d postgres-eval   # scratch database, port 5433
+                                                    # port taken? POSTGRES_EVAL_PORT=5440 ...
 cd apps/api && bun run eval
 ```
 
