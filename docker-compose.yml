@@ -18,5 +18,31 @@ services:
       timeout: 5s
       retries: 10
 
+  # SPEC §9 — the retrieval eval re-ingests the fixtures on every run, so it
+  # needs a database it is free to wipe. A separate service rather than a second
+  # database in the same container: the guard in eval/run.ts compares
+  # EVAL_DATABASE_URL against DATABASE_URL, and differing by port and volume
+  # makes the two impossible to confuse. Not started by a bare `docker compose
+  # up -d` in day-to-day work — bring it up only when running the eval.
+  postgres-eval:
+    image: pgvector/pgvector:pg17
+    container_name: documind-postgres-eval
+    profiles: ["eval"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: documind
+      POSTGRES_PASSWORD: documind
+      POSTGRES_DB: documind_eval
+    ports:
+      - "${POSTGRES_EVAL_PORT:-5433}:5432"
+    volumes:
+      - documind-eval-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U documind -d documind_eval"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   documind-pgdata:
+  documind-eval-pgdata:

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
+import { detectLanguage } from "./chunk";
 import { extractPdfText, NO_TEXT_ERROR } from "./extract";
 
 /**
@@ -15,6 +16,7 @@ describe("extractPdfText", () => {
   it.each([
     ["warehouse-safety.pdf", 10],
     ["supplier-contract.pdf", 12],
+    ["equipment-manual.pdf", 13],
   ] as const)("returns one string per page of %s", async (name, expected) => {
     const { totalPages, pages } = await extractPdfText(await fixture(name));
 
@@ -30,6 +32,7 @@ describe("extractPdfText", () => {
   it.each([
     ["warehouse-safety.pdf", "insulated freezer jacket", 6],
     ["supplier-contract.pdf", "支払いサイトは30日", 5],
+    ["equipment-manual.pdf", "最大処理能力は毎分12箱", 12],
   ] as const)(
     "keeps %s's text on the page it was printed on",
     async (name, phrase, page) => {
@@ -51,20 +54,45 @@ describe("extractPdfText", () => {
   // in the CJK Radicals Supplement and has no NFKC decomposition, so NFKC alone
   // leaves it in place. If a future fixture edit introduces another supplement
   // radical, this test is what reports it.
-  it("normalises CJK radicals back to ideographs", async () => {
+  it.each(["supplier-contract.pdf", "equipment-manual.pdf"] as const)(
+    "normalises CJK radicals back to ideographs in %s",
+    async (name) => {
+      const { pages } = await extractPdfText(await fixture(name));
+      const text = pages.join("");
+
+      const radicals = [...text].filter((ch) => {
+        const code = ch.codePointAt(0) ?? 0;
+        return code >= 0x2e80 && code <= 0x2fdf;
+      });
+
+      expect(radicals).toEqual([]);
+    },
+  );
+
+  it("keeps the Japanese contract's normalised ideographs readable", async () => {
     const { pages } = await extractPdfText(
       await fixture("supplier-contract.pdf"),
     );
     const text = pages.join("");
 
-    const radicals = [...text].filter((ch) => {
-      const code = ch.codePointAt(0) ?? 0;
-      return code >= 0x2e80 && code <= 0x2fdf;
-    });
-
-    expect(radicals).toEqual([]);
     expect(text).toContain("支払い");
     expect(text).toContain("民事再生手続開始");
+  });
+
+  // The equipment manual exists to exercise the `mixed` branch of
+  // detectLanguage, and its CJK ratio is ~0.07 against a threshold of 0.05 —
+  // close enough that trimming the Japanese safety section or the quick
+  // reference page would silently reclassify it as `en`. Asserted here rather
+  // than in chunk.test.ts because it is a fact about the fixture, not about the
+  // function: chunk.test.ts already covers the classifier on synthetic input.
+  it.each([
+    ["warehouse-safety.pdf", "en"],
+    ["supplier-contract.pdf", "ja"],
+    ["equipment-manual.pdf", "mixed"],
+  ] as const)("classifies %s as %s", async (name, expected) => {
+    const { pages } = await extractPdfText(await fixture(name));
+
+    expect(detectLanguage(pages.join(""))).toBe(expected);
   });
 
   // SPEC §3.2 — the failure the user is expected to recognise and act on. The

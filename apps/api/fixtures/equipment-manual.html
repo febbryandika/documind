@@ -1,0 +1,149 @@
+<!--
+  Source for equipment-manual.pdf. Regenerate after editing:
+
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+    --headless --disable-gpu --no-pdf-header-footer \
+    --print-to-pdf=equipment-manual.pdf \
+    "file://$PWD/equipment-manual.html"
+-->
+<meta charset="utf-8" />
+<title>Case Sealer SK-480 Operation Manual</title>
+<style>
+  @page { margin: 18mm; }
+  body { font-family: "Helvetica Neue", Arial, "Hiragino Sans", "Noto Sans JP", sans-serif; font-size: 10.5pt; line-height: 1.55; }
+  .page { break-after: page; }
+  .page:last-child { break-after: auto; }
+  h1 { font-size: 17pt; margin: 0 0 0.6em; } h2 { font-size: 12pt; margin: 1.1em 0 0.3em; }
+  p { margin: 0 0 0.6em; }
+</style>
+
+<div class="page">
+  <h1>Case Sealer SK-480 — Operation Manual</h1>
+  <p>Manual reference SK480-OM-EN-r4. Machine manufactured by 三和機械株式会社 (Sanwa Kikai Co., Ltd.), Nagoya. This English manual is a translation of the Japanese original; where the two disagree, the Japanese original governs. Control panel legends, warning placards and part markings on the machine itself are printed in Japanese and are reproduced here exactly as they appear.</p>
+  <h2>1. About this manual ／ 本書について</h2>
+  <p>This manual covers installation checks, daily operation, fault recovery and routine maintenance of the SK-480 semi-automatic case sealer with integrated palletising arm. It is written for the operator and the line supervisor. Work described in section 11 as annual service is not operator work and must be carried out by an authorised engineer.</p>
+  <p>Keep this manual within reach of the machine. A replacement copy may be requested from the supplier quoting the manual reference printed above. The revision number changes whenever a safety instruction changes, so check that the copy at the machine is revision 4 or later before using it.</p>
+  <h2>2. Machine identification ／ 機械の識別</h2>
+  <p>The serial plate is fixed to the rear frame directly below the electrical cabinet. It carries the model designation, the serial number, the year of manufacture and the supply specification. Quote the serial number in full on every parts order and every service request; the frame casting was revised in the third production year and several parts are not interchangeable across that change.</p>
+  <p>The supply specification for this machine is 200 V three phase, 50/60 Hz, 4.8 kW. Compressed air is supplied at the filter regulator on the right-hand side of the frame. The machine is designed for indoor use only, at an ambient temperature between 5 and 40 degrees Celsius and a relative humidity below 85 per cent without condensation.</p>
+</div>
+
+<div class="page">
+  <h2>3. Safety summary ／ 安全上の要点</h2>
+  <p>Read this section before operating the machine. Every instruction in it exists because the corresponding injury has been reported to the manufacturer at least once.</p>
+  <p>A clear working space of at least 800 mm must be maintained on all four sides of the machine. This is not a recommendation. The palletising arm swings outside the frame footprint during its return stroke, and the guard interlock does not cover that arc.</p>
+  <p>Never reach into the taping head while the machine is energised, even when it appears to be idle between cases. The head retracts under spring pressure and will complete its stroke without warning if the sensor is obscured. Isolate the machine and follow the lockout procedure in section 9 before any work inside the guarding.</p>
+  <h2>4. Warning placards ／ 警告表示</h2>
+  <p>Four placards are fixed to the machine. If any placard is damaged, illegible or painted over, the machine must be taken out of service until it is replaced. Replacement placards are supplied free of charge by the manufacturer.</p>
+  <p>The yellow placard on the taping head reads 巻き込み注意 — caution, entanglement hazard. The red placard on the electrical cabinet door reads 高電圧危険 — high voltage danger. The yellow placard on the palletising arm pedestal reads 挟まれ注意 — caution, crush hazard. The white placard beside the isolator reads 点検中は電源を切ること — switch off the power supply during inspection.</p>
+  <p>Placards are read by every operator on every shift and by contractors who may not have been inducted. They are therefore not translated on the machine: the Japanese text is the legally required marking, and this manual is the translation.</p>
+</div>
+
+<div class="page">
+  <h2>安全上のご注意（日本語原文）</h2>
+  <p>本項は製造者が交付した日本語原文であり、翻訳との間に相違がある場合は本項の記載が優先します。作業者は就業前に必ず本項を通読してください。</p>
+  <p>機械の四方には、いずれも800ミリメートル以上の作業空間を確保してください。パレタイジングアームは戻り行程において機械の外形寸法よりも外側に振り出し、この範囲は安全扉の連動装置では保護されません。</p>
+  <p>通電中はテープヘッドに手を入れないでください。運転の合間で静止しているように見える場合であっても同様です。ヘッドはばね圧により復帰するため、検出器が遮られると予告なく行程を完了します。安全扉の内側で作業を行う場合は、必ず元電源を遮断し、第10章の施錠手順に従ってください。</p>
+  <p>安全装置を無効にしてはなりません。連動スイッチの短絡、非常停止回路の迂回、光電検出器の遮蔽は、いずれも重大な災害に直結する行為であり、保証の全部を失効させます。</p>
+  <p>警告表示が破損し、判読できなくなり、または塗料で覆われた場合は、交換するまで機械の使用を中止してください。交換用の表示板は製造者が無償で支給します。</p>
+  <p>圧縮空気の残圧は蓄圧器に保持されます。供給弁を閉じた後も、排気弁を開いて60秒間待ち、圧力計がゼロを示したことを確認するまでは、残圧によりアームが一行程を完了する可能性があります。</p>
+  <p>本機の設置場所は屋内に限ります。周囲温度は摂氏5度から40度、相対湿度は結露のない状態で85パーセント未満としてください。</p>
+</div>
+
+<div class="page">
+  <h2>5. Controls and indicators ／ 操作部と表示灯</h2>
+  <p>All operator controls are on the front panel, at the left-hand end of the infeed conveyor. The panel legends are printed in Japanese; their meanings are given below and do not change between machine revisions.</p>
+  <p>The green pushbutton labelled 運転 starts the machine in the mode currently selected. The black pushbutton labelled 停止 stops the machine at the end of the case in progress; it is a controlled stop, not an emergency stop, and the taping head will complete its cycle before motion ends.</p>
+  <p>The blue pushbutton labelled リセット clears a latched fault once the cause has been removed. Pressing リセット does not start the machine and does not clear the fault log; it only releases the latch so that 運転 will be accepted again.</p>
+  <p>The red mushroom-head button labelled 非常停止 removes power from all motion immediately and drops the air supply through the dump valve. It latches mechanically and is released by twisting it clockwise. Releasing it does not restart the machine — the fault must then be cleared with リセット as described above.</p>
+  <p>The two-position selector labelled 手動 / 自動 chooses between manual jog and automatic cycling. In 手動 the machine responds only while a jog button is held. In 自動 the machine cycles on case detection at the infeed photocell. Changing the selector while the machine is running forces a controlled stop.</p>
+  <p>Three indicator lamps sit above the pushbuttons. Green indicates ready, amber indicates a warning that has not stopped the machine, and red indicates a latched fault. The four-character display to the right of the lamps shows the active error code described in section 8.</p>
+</div>
+
+<div class="page">
+  <h2>6. Daily pre-start checks ／ 始業点検</h2>
+  <p>The checks in this section are carried out by the operator at the start of every shift and recorded on the machine log sheet. They take about four minutes. A machine that fails any check is not to be started until the fault has been rectified or the supervisor has authorised the work in writing.</p>
+  <p>Check the air pressure gauge on the filter regulator. It must read between 0.55 and 0.65 MPa with the machine at rest. A reading below 0.55 MPa will not stop the machine from starting but will cause the taping head to mis-fold the leading flap, and the fault appears downstream as a rejected case rather than as an error code.</p>
+  <p>Drain the filter bowl. Condensate collecting in the bowl is carried into the cylinders and is the most common cause of premature seal failure on this machine. The drain is manual on machines built before the fourth production year and automatic thereafter.</p>
+  <p>Check the tape roll. Replace the roll if less than 15 metres remain — the low-tape sensor triggers at approximately 8 metres, which is under one pallet of cases and will stop the line mid-build. The remaining length is read from the scale printed on the roll core holder.</p>
+  <p>Check that both guard doors are closed and that the interlock indicator on the panel is extinguished. Check the infeed and outfeed conveyors are clear of debris, banding and stray tape. Check that the emergency stop button is released and that the isolator is locked in the on position.</p>
+</div>
+
+<div class="page">
+  <h2>7. Startup sequence ／ 起動手順</h2>
+  <p>Follow this sequence in order. Starting out of sequence is the usual cause of a fault on the first case of a shift, and the resulting error code describes the symptom rather than the cause.</p>
+  <p>Turn the isolator to the on position and wait for the panel display to complete its self test. The self test takes approximately twenty seconds and ends with the display showing four dashes. A display that stays blank after thirty seconds indicates a control supply fault and is not operator work.</p>
+  <p>Open the air supply valve slowly. Opening it fully in one movement slams the cylinders to their end stops and over time this shifts the taping head alignment. The gauge should settle within ten seconds.</p>
+  <p>Select 手動 and jog the taping head through one full cycle with the guard doors closed. Watch that the blade carrier returns fully to its rest position. This single jog cycle catches an obstructed head before a case is in the machine, which is the only point at which it can be cleared without opening the guarding.</p>
+  <p>Select 自動 and press 運転. Allow the machine to run empty for three minutes before feeding the first case. This warm-up is required whenever the machine has been standing for more than eight hours, and its purpose is to bring the hydraulic circuit on the palletising arm up to working temperature — a cold circuit trips the low pressure fault under load.</p>
+  <p>Feed one case and inspect the seal on both the top and bottom centre lines before releasing the line to production.</p>
+</div>
+
+<div class="page">
+  <h2>8. Normal operation ／ 通常運転</h2>
+  <p>In 自動 the machine cycles on case detection at the infeed photocell. Cases must be presented squarely, flaps folded inward at the leading edge, and spaced by at least 150 mm. Cases presented closer than this are detected as a single case and the second one passes through unsealed.</p>
+  <p>The maximum case weight is 25 kilograms. The maximum throughput is 12 cases per minute at the standard belt speed. Both figures are limits on the machine, not targets for the line: sustained running at the throughput limit shortens tape head service intervals appreciably, and the palletising arm is the constraint at high case weights rather than the sealer.</p>
+  <p>Case dimensions must fall within 250 to 600 mm in length, 200 to 500 mm in width and 150 to 500 mm in height. The side belts adjust to width automatically. Height adjustment is manual and is set with the handwheel on the mast; the setting is read off the scale on the mast column and recorded on the changeover sheet.</p>
+  <p>The palletising arm builds to the pattern selected on the panel. Six patterns are stored and are selected by number; the pattern in use must match the pattern printed on the pallet label, because the arm has no way to verify what is already on the pallet.</p>
+  <p>Watch the first three cases of every new pattern through to placement. Nearly all pattern faults are visible in the first layer and are trivial to correct at that point.</p>
+</div>
+
+<div class="page">
+  <h2>9. Error codes ／ 異常コード</h2>
+  <p>The four-character display shows the active error code. The panel legend beside each code on the machine is in Japanese; the table below gives the Japanese text exactly as displayed, the English meaning, and the operator action.</p>
+  <p>E-118 テープ切れ — tape break or tape exhausted. The panel message reads テープを交換してください. Open the head guard, thread a new roll following the diagram inside the guard door, close the guard and press リセット. This is operator work.</p>
+  <p>E-204 油圧低下 — low hydraulic pressure on the palletising arm. The panel message reads 作動油の油面を確認してください. Stop the machine and check the reservoir level at the sight glass before restarting. If the level is correct and the fault repeats, the circuit has not reached working temperature; see the warm-up requirement in section 7. A third occurrence in one shift is a service call.</p>
+  <p>E-311 過負荷 — motor overload on the infeed drive. The panel message reads 搬入部を確認し過負荷継電器を復帰させてください. Usually a jammed case or a foreign object under the belt. Isolate, lock out, clear the obstruction, then reset the thermal overload inside the cabinet before pressing リセット.</p>
+  <p>E-450 非常停止作動 — emergency stop engaged. Establish why it was pressed before releasing it. Twist the button clockwise to release, then press リセット.</p>
+  <p>E-522 扉開放 — a guard door is open or an interlock has failed. The panel message reads 安全扉を閉めてください. If both doors are closed and the code persists, the interlock switch is faulty and the machine must be taken out of service.</p>
+  <p>E-907 制御異常 — internal control fault. The panel message reads 保守担当者に連絡してください. Not operator work. Record the code, isolate the machine and raise a service call.</p>
+</div>
+
+<div class="page">
+  <h2>10. Shutdown and lockout ／ 停止と施錠</h2>
+  <p>At the end of a production run, press 停止 and allow the machine to finish the case in progress. Do not use 非常停止 for a routine stop: the dump valve drops the air supply abruptly and the taping head is left mid-stroke, which is the condition most likely to trap a hand at the next startup.</p>
+  <p>For any work inside the guarding, follow the lockout procedure in full. It has five steps and none of them may be omitted.</p>
+  <p>First, press 停止 and confirm the machine has come to rest. Second, turn the isolator to the off position. Third, apply your own padlock to the isolator hasp — each person working on the machine applies their own lock, and the last lock off is the last person out. Fourth, close the air supply valve and open the bleed valve to vent the receiver. Fifth, wait 60 seconds for residual pressure in the accumulator to bleed down, then verify at the gauge that it reads zero before opening any guard.</p>
+  <p>The 60 second wait is the step most often skipped and the one that causes the injuries. The accumulator on the palletising arm holds enough energy to complete a full arm stroke after the supply has been closed.</p>
+  <p>On restoring the machine to service, remove locks in reverse order, close the bleed valve, open the air supply slowly, and repeat the startup sequence in section 7 from the beginning.</p>
+</div>
+
+<div class="page">
+  <h2>11. Consumables and changeover ／ 消耗品と段取り替え</h2>
+  <p>Only the consumables listed here are approved. Substituting an unapproved tape is the single most common cause of seal failure attributed to the machine, and it voids the warranty on the taping head.</p>
+  <p>Carton sealing tape: part number TP-48-CL, 48 mm wide, 1500 m per roll, clear polypropylene, hot melt adhesive. A 75 mm core is required; rolls on a 50 mm core will fit the holder but will not track correctly and produce a tape line that wanders across the case seam.</p>
+  <p>Taping head blade: part number BLD-K12. The blade is replaced when the tape shows a ragged cut edge, and in any case at every annual service. The blade is handled with the guard supplied in the packet and is never handled by the cutting edge.</p>
+  <p>Filter element for the air regulator: part number FLT-A25, replaced every six months regardless of apparent condition. Lubricant for the chain drive: lithium soap grease to NLGI grade 2.</p>
+  <p>For a changeover between case sizes, stop the machine with 停止, adjust the mast height with the handwheel, feed one case in 手動 and confirm the seal position before returning the selector to 自動. Record the mast scale reading on the changeover sheet so that the setting can be recovered without a trial case next time.</p>
+</div>
+
+<div class="page">
+  <h2>12. Maintenance schedule ／ 保守点検計画</h2>
+  <p>Maintenance is divided between operator tasks, which appear on the shift log, and engineer tasks, which do not. The division is by competence, not by difficulty.</p>
+  <p>Daily, by the operator: the pre-start checks in section 6, and a wipe-down of the infeed photocell lens at the end of the shift. Adhesive dust on the lens is the cause of most spurious case detection faults.</p>
+  <p>Weekly, by the operator: check the chain tension on the outfeed drive. Correct tension allows 10 mm of deflection at the midpoint of the longest span under light thumb pressure. Report a chain that cannot be brought into tolerance rather than adjusting beyond the marked limit on the tensioner.</p>
+  <p>Every 500 running hours, by the maintenance technician: grease the palletising arm pivot bearings with lithium soap grease to NLGI grade 2, four strokes per nipple, and inspect the hydraulic hoses for chafing where they cross the pedestal.</p>
+  <p>Every 2000 running hours or annually, whichever comes first: replace the taping head blade, replace the air filter element, check the head mounting bolts to a torque of 18 N·m, and change the hydraulic oil. The annual service must be carried out by an engineer authorised by 三和機械株式会社. An unauthorised annual service voids the remaining warranty.</p>
+  <p>Running hours are read from the counter on the panel. The counter cannot be reset and is the reference for all interval-based work.</p>
+</div>
+
+<div class="page">
+  <h2>13. 日本語クイックリファレンス</h2>
+  <p>現場に掲示するための要約です。詳細は各章を参照してください。この頁だけを見て作業を行わないでください。</p>
+  <p>始業点検。空気圧は0.55から0.65メガパスカルの範囲にあること。フィルターの水抜きを行うこと。テープの残量が15メートル未満であれば交換すること。両方の安全扉が閉まっていること。非常停止ボタンが解除されていること。</p>
+  <p>起動手順。元電源を入れ、表示部の自己診断が終わるまで待つ。空気供給弁をゆっくり開く。手動を選び、テープヘッドを一循環させる。自動に切り替えて運転を押す。空運転を3分間行ってから最初の箱を投入すること。</p>
+  <p>異常表示。E-118はテープ切れ、E-204は油圧低下、E-311は過負荷、E-450は非常停止作動、E-522は扉開放、E-907は制御異常を示します。E-907が表示された場合は操作者による復旧は行わず、保守担当者に連絡してください。</p>
+  <p>停止と施錠。停止ボタンで停止させ、元電源を切り、各自の南京錠を掛け、空気供給を止めて排気弁を開き、蓄圧器の圧力が抜けるまで60秒待つこと。圧力計がゼロを示したことを確認してから安全扉を開くこと。</p>
+  <p>最大質量は25キログラム、最大処理能力は毎分12箱です。この数値は機械の限界であり、生産目標ではありません。</p>
+</div>
+
+<div class="page">
+  <h2>14. Spare parts ／ 補修部品</h2>
+  <p>Order spare parts through the supplier quoting the machine serial number and the part number below. Parts are despatched from the Nagoya works and the standard lead time is fifteen working days; the four items marked as stocked are held locally and are normally available next day.</p>
+  <p>TP-48-CL carton sealing tape, stocked. BLD-K12 taping head blade, stocked. FLT-A25 filter element, stocked. SEAL-K12 taping head seal kit, stocked. PMP-H220 hydraulic pump assembly. VLV-D10 air dump valve. SW-INT4 guard interlock switch. PC-IF1 infeed photocell. CHN-OF8 outfeed drive chain. BRG-PV2 arm pivot bearing pair.</p>
+  <h2>15. Warranty ／ 保証</h2>
+  <p>The machine is warranted against defects in materials and workmanship for twenty-four months from the date of commissioning. The warranty is void if an unapproved consumable has been used, if the annual service has been carried out by an engineer not authorised by the manufacturer, or if a safety device has been bypassed or defeated at any time.</p>
+  <p>Wear parts are excluded from the warranty. The wear parts for this machine are the taping head blade, the tape roll holder friction pad, the outfeed drive chain and the air filter element.</p>
+  <h2>16. Contact ／ 連絡先</h2>
+  <p>Technical support is provided in Japanese and English. Have the machine serial number, the manual revision and the active error code ready before calling. Faults reported without the serial number cannot be answered, because the parts fitted depend on the production year.</p>
+</div>
