@@ -1,1 +1,96 @@
-[]
+[
+  {
+    "doc": "warehouse-safety.pdf",
+    "q": "How many visitors may a single host escort at one time?",
+    "page": 2,
+    "anchor": "no more than four visitors at once"
+  },
+  {
+    "doc": "warehouse-safety.pdf",
+    "q": "What is the maximum forklift speed inside the building?",
+    "page": 4,
+    "anchor": "maximum speed inside the building is 8 km/h"
+  },
+  {
+    "doc": "warehouse-safety.pdf",
+    "q": "What PPE is required in the cold storage area?",
+    "page": 6,
+    "anchor": "insulated freezer jacket"
+  },
+  {
+    "doc": "warehouse-safety.pdf",
+    "q": "What is the single-person lift limit for a load above shoulder height?",
+    "page": 7,
+    "anchor": "reducing to 10 kilograms"
+  },
+  {
+    "doc": "warehouse-safety.pdf",
+    "q": "How much clearance must be left between stored loads and the sprinkler heads?",
+    "page": 8,
+    "anchor": "clearance of 500 millimetres"
+  },
+  {
+    "doc": "supplier-contract.pdf",
+    "q": "支払い条件は何日ですか？",
+    "page": 5,
+    "anchor": "支払いサイトは30日"
+  },
+  {
+    "doc": "supplier-contract.pdf",
+    "q": "遅延損害金の年率は？",
+    "page": 5,
+    "anchor": "年率14.6パーセント",
+    "note": "Retrieval passes; gpt-4o-mini answers 14.6% correctly but sometimes cites the wrong [n]. A generation failure hit-rate@5 scores as a pass — kept as the standing example of what this metric cannot see (SPEC §13)."
+  },
+  {
+    "doc": "supplier-contract.pdf",
+    "q": "納期に遅延した場合の遅延違約金の年率は？",
+    "page": 3,
+    "anchor": "年率6パーセントの割合による遅延違約金",
+    "note": "Near-miss for the 14.6% question above: same document, adjacent concept, different rate. If retrieval confuses the two, hit-rate is the thing that says so."
+  },
+  {
+    "doc": "supplier-contract.pdf",
+    "q": "秘密保持義務は契約終了後どのくらい存続しますか？",
+    "page": 8,
+    "anchor": "本契約の終了後3年間有効に存続"
+  },
+  {
+    "doc": "supplier-contract.pdf",
+    "q": "Which court has exclusive jurisdiction over disputes under this contract?",
+    "page": 12,
+    "anchor": "東京地方裁判所を第一審の専属的合意管轄裁判所",
+    "note": "Cross-language: English question, Japanese answer. text-embedding-3-small being multilingual is an assumption this project rests on; this is where it gets tested."
+  },
+  {
+    "doc": "equipment-manual.pdf",
+    "q": "What does the red placard on the electrical cabinet door say?",
+    "page": 2,
+    "anchor": "electrical cabinet door reads 高電圧危険"
+  },
+  {
+    "doc": "equipment-manual.pdf",
+    "q": "リセットボタンを押すと何が起こりますか？",
+    "page": 4,
+    "anchor": "it only releases the latch",
+    "note": "Cross-language, the other direction: Japanese question, English answer describing a Japanese-labelled control."
+  },
+  {
+    "doc": "equipment-manual.pdf",
+    "q": "At what remaining length does the low-tape sensor trigger?",
+    "page": 5,
+    "anchor": "low-tape sensor triggers at approximately 8 metres"
+  },
+  {
+    "doc": "equipment-manual.pdf",
+    "q": "What must the operator do to clear error code E-311?",
+    "page": 8,
+    "anchor": "reset the thermal overload inside the cabinet"
+  },
+  {
+    "doc": "equipment-manual.pdf",
+    "q": "What torque are the taping head mounting bolts checked to?",
+    "page": 11,
+    "anchor": "torque of 18 N·m"
+  }
+]

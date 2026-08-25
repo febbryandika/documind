@@ -9,11 +9,27 @@ were made from lives next to them.
 |---|---|---|---|---|
 | `warehouse-safety.pdf` | English | 10 | 20 | "insulated freezer jacket", page 6 |
 | `supplier-contract.pdf` | Japanese | 12 | 26 | 「支払いサイトは30日」, page 5 |
+| `equipment-manual.pdf` | mixed | 13 | 27 | 「最大処理能力は毎分12箱」, page 12 |
 | `scanned-no-text.pdf` | — | 1 | — | drawn in CSS, so it has no text layer |
 
 `src/rag/extract.test.ts` asserts those page numbers, which is what proves the
 array position unpdf returns maps to the printed page a citation refers to. Each
 anchor phrase occurs exactly once in its document.
+
+It also asserts the detected language of each file. That matters most for the
+equipment manual: it is an English manual for a machine built in Japan, so the
+Japanese is confined to the panel legends, the fault messages, the untranslated
+safety notice on page 3 and the quick reference on page 12. That puts its CJK
+ratio at ~0.07 against `detectLanguage`'s 0.05 threshold — enough to classify as
+`mixed`, but close enough that trimming any of those sections would silently
+reclassify it as `en` and stop the fixture exercising the branch it exists for.
+
+The manual deliberately says several things twice, once in each language — the
+800 mm clearance, the 60 second bleed-down, the 25 kg case limit. That is what a
+real bilingual manual does, and it is why the golden set (`eval/golden.json`)
+tags only facts that appear on exactly one page. Each entry there carries the
+`anchor` phrase its page was read off, and `eval/run.ts` re-checks all fifteen
+against the fixtures before it spends anything on embeddings.
 
 Pages carry two to three chunks each, so a top-5 retrieval is a real filter
 rather than a pass-through, and consecutive chunks within a page genuinely
@@ -27,7 +43,7 @@ from this directory:
 
 ```bash
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-for f in warehouse-safety supplier-contract scanned-no-text; do
+for f in warehouse-safety supplier-contract equipment-manual scanned-no-text; do
   "$CHROME" --headless --disable-gpu --no-pdf-header-footer \
     --print-to-pdf="$f.pdf" "file://$PWD/$f.html"
 done
