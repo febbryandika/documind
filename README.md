@@ -26,7 +26,7 @@ notice and quick reference are in Japanese.
 
 ### Hosted status
 
-The Next.js app is deployed at **https://REPLACE-ME.vercel.app**, but **the API is not hosted
+The Next.js app is deployed at **https://documind-gules-two.vercel.app**, but **the API is not hosted
 yet**, so signing in there will not work — the UI is a shell over a backend that is not running.
 
 That is a deliberate hold rather than an oversight. SPEC §11 requires `min_machines_running = 1`

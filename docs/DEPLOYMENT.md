@@ -17,17 +17,24 @@ GitHub Actions is deliberately unused; this account's minutes are exhausted.
 ### 1.1 Import the repo
 
 1. **[vercel.com/new](https://vercel.com/new)** → import `febbryandika/documind`.
-2. Name the project **`documind`** so the production URL is `documind.vercel.app`.
+2. Name the project **`documind`**. Vercel picks the production domain itself, and
+   `documind.vercel.app` was already taken — this project landed on
+   **`documind-gules-two.vercel.app`**. Read the assigned domain off the project Overview
+   before setting the env var below; it is not predictable.
 
-### 1.2 Three settings that are not defaults
+### 1.2 Two settings that are not defaults
 
 | Setting | Value |
 |---|---|
-| Root Directory | `apps/web` |
-| Include files outside the Root Directory | **On** |
+| Root Directory | `apps/web` (expand `apps` in the picker and choose `web`) |
 | Install Command (override) | `bun install --cwd ../api && pnpm install` |
 
-The last two are the ones people miss, and the build fails without them.
+Setting the Root Directory also flips the Application Preset from `Other` to `Next.js`, which
+is how you know it took. There is no "include files outside the root directory" toggle in the
+current import flow — Vercel checks out the whole repo regardless, which the successful
+`bun install --cwd ../api` proves.
+
+The Install Command override is the one people miss, and the build fails without it.
 `apps/web/lib/api.ts` type-imports `AppType` from `apps/api/src/index.ts`, which pulls the whole
 server graph into the type check — `next build` resolves `hono`, `drizzle-orm`, `postgres` and
 `unpdf` out of `apps/api/node_modules`. The two apps are separate installs with no workspace, so
@@ -39,8 +46,14 @@ pnpm for `apps/web`, never crossed.
 Set one, for **Production**:
 
 ```
-NEXT_PUBLIC_API_URL = https://documind.vercel.app/api-proxy
+NEXT_PUBLIC_API_URL = https://documind-gules-two.vercel.app/api-proxy
 ```
+
+**Set Type to `Config`, not `Secret`.** Vercel defaults new variables to Secret and then refuses
+to save a `NEXT_PUBLIC_*` one that way — "Public prefixes expose values to the browser" — and a
+variable already saved as a Secret **cannot be converted**, so the only fix is to delete it and
+add it again. Getting the domain wrong here is worse than a broken link: the sign-in form would
+POST credentials to a domain you do not own.
 
 Leave `API_ORIGIN` **unset** for now. `next.config.ts` registers no rewrite without it, which is
 correct while there is no API — and when you do host one, adding it is the only change needed.
@@ -53,7 +66,8 @@ The site will render, `/` will redirect to `/sign-in`, and signing in will fail 
 behind `/api-proxy` yet. That is expected until Part 2. Nothing crashes: `apps/web/lib/api.ts`
 translates transport failures into a sentence rather than a stack trace.
 
-Then replace `https://REPLACE-ME.vercel.app` in `README.md` with the real URL.
+**Done** — live at **https://documind-gules-two.vercel.app**, deployed from `main`, with the
+URL recorded in `README.md`.
 
 ---
 
@@ -87,7 +101,7 @@ build the API from `apps/api`, verified at 392 MB and serving against Neon.
    | `DATABASE_URL` | Neon **pooled** URL, `&channel_binding=require` stripped |
    | `BETTER_AUTH_SECRET` | 32 random bytes |
    | `BETTER_AUTH_URL` | The API's own origin |
-   | `WEB_ORIGIN` | `https://documind.vercel.app` — exact production origin |
+   | `WEB_ORIGIN` | `https://documind-gules-two.vercel.app` — exact production origin |
    | `OPENAI_API_KEY` | `sk-...` |
    | `DEMO_USER_EMAIL` | `demo@documind.app` |
    | `DEMO_USER_PASSWORD` | `documind-demo` |
@@ -97,7 +111,7 @@ build the API from `apps/api`, verified at 392 MB and serving against Neon.
    missing, so a typo is a crash loop, not a silent failure — the host's logs will name it.
 
 2. On Vercel, add `API_ORIGIN` = the API's origin, and **redeploy**.
-3. Check `https://documind.vercel.app/api-proxy/health` → `{"status":"ok"}`.
+3. Check `https://documind-gules-two.vercel.app/api-proxy/health` → `{"status":"ok"}`.
 4. Run through [Part 4](#part-4--verify).
 
 If the host is far from Neon's `ap-southeast-1` (Koyeb's free regions are Frankfurt and
@@ -182,7 +196,8 @@ The tidier alternative is a custom domain with web and API on sibling subdomains
 | Sign-in fails on the deployed site | Expected while no API is hosted — see Part 2 |
 | Sign-in succeeds, then bounces to `/sign-in` | `NEXT_PUBLIC_API_URL` points at the API origin instead of `<vercel>/api-proxy` — the cookie is landing on the wrong domain |
 | `404` on `/api-proxy/...` | `API_ORIGIN` wasn't set at build time; `next.config.ts` registers no rewrite without it |
-| Vercel build: `Cannot find module 'hono'` | Install Command override missing, or "include files outside the Root Directory" is off |
+| Vercel build: `Cannot find module 'hono'` | Install Command override missing, so `apps/api/node_modules` was never installed |
+| `NEXT_PUBLIC_*` variable won't save | Its Type is Secret. Vercel blocks public-prefixed secrets, and a saved secret can't be converted — delete it and re-add as Config |
 | Vercel build: `bun: command not found` | Bun isn't on that build image. Fall back to `typescript: { ignoreBuildErrors: true }` in `next.config.ts` — acceptable here because this repo has no CI and typechecks locally before pushing |
 | API crash-loops on boot | A required secret is unset — the logs name it |
 | `unrecognized configuration parameter "channel_binding"` | Strip it from `DATABASE_URL` |
