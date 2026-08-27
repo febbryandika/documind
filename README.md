@@ -2,16 +2,17 @@
 
 Operations document Q&A for small businesses — ask a question, get an answer cited to the page.
 
-## Live demo
+## Try it
 
-**https://REPLACE-ME.vercel.app** — filled in when the app is deployed (`docs/DEPLOYMENT.md`).
+The full flow runs locally in three commands — see [Local setup](#local-setup) — against a
+seeded demo account:
 
 ```
 demo@documind.app
 documind-demo
 ```
 
-Three operational documents are already ingested and `ready`, so nobody waits on an embed
+Three operational documents are already ingested and `ready`, so nothing waits on an embed
 job. Upload and delete are blocked for this account (SPEC §11) — everything else works.
 
 | Document | Language | Try asking |
@@ -22,6 +23,20 @@ job. Upload and delete are blocked for this account (SPEC §11) — everything e
 
 The third is the interesting one: an English question against a document whose safety
 notice and quick reference are in Japanese.
+
+### Hosted status
+
+The Next.js app is deployed at **https://REPLACE-ME.vercel.app**, but **the API is not hosted
+yet**, so signing in there will not work — the UI is a shell over a backend that is not running.
+
+That is a deliberate hold rather than an oversight. SPEC §11 requires `min_machines_running = 1`
+because ingest is an in-process background job (SPEC §6), and no free host provides it: Fly ended
+free allowances for new accounts, Render's free tier sleeps after 15 minutes with a ~1 minute
+spin-up, Koyeb's free instance is 0.1 vCPU and scales to zero after an hour, and Cloudflare
+Workers caps free requests at 10 ms of CPU — less than this app's auth check alone, never mind
+parsing a PDF. Cloudflare Containers would fit but starts at $5/month.
+
+`docs/DEPLOYMENT.md` has the comparison and the steps for each option.
 
 > **Status: scaffolding.** This README is a placeholder. The real one is written in build-order
 > step 12 and is the actual deliverable (SPEC §12).
@@ -210,11 +225,13 @@ End-to-end tests need browsers once: `pnpm exec playwright install chromium`.
 
 ## Deploying
 
-Vercel (web) · Fly.io (API) · Neon (Postgres + pgvector). Both apps deploy from their own
-dashboards, connected to this repo — no CLI, nothing installed locally, and no GitHub
-Actions. `Dockerfile` and `fly.toml` sit at the repo root because that is where Fly's
-GitHub-connected deploys look for them; `.dockerignore` keeps `apps/web` out of the image.
+Vercel (web) · Neon (Postgres + pgvector) · **API host still open**.
 
-The click-by-click guide, the env-var matrix, and why the web app proxies API traffic
-through its own origin instead of calling Fly directly are in
-[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+The web app deploys from Vercel's dashboard, connected to this repo — no CLI, nothing installed
+locally, no GitHub Actions. `Dockerfile` and `.dockerignore` at the repo root build the API from
+`apps/api` and are verified working; `fly.toml` is written for Fly.io, the intended target in
+SPEC §11. What is missing is a host willing to keep a process alive for free.
+
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) has the Vercel steps, a comparison of every host
+considered with the reason each was or was not taken, and why the web app proxies API traffic
+through its own origin instead of calling the API directly.
