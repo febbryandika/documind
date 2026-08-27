@@ -5,6 +5,7 @@ import { bodyLimit } from "hono/body-limit";
 import * as z from "zod";
 import { db } from "../db";
 import { documents } from "../db/schema";
+import { blockDemoUser } from "../middleware/demo-user";
 import { sessionMiddleware, type SessionEnv } from "../middleware/session";
 import { enqueueIngest } from "../rag/ingest";
 
@@ -110,42 +111,52 @@ export const documentsRoutes = new Hono<SessionEnv>()
 
   // SPEC §3.2 — insert a 'processing' row, answer 202, and hand the buffer to
   // the in-process worker. The row is what reports progress from here on.
-  .post("/", limitBodySize, zValidator("form", uploadForm), async (c) => {
-    const { file, category } = c.req.valid("form");
+  //
+  // blockDemoUser goes first, ahead of limitBodySize: a blocked upload should
+  // never buffer 10MB before being refused. Same argument as the rate limiter
+  // in chat.ts.
+  .post(
+    "/",
+    blockDemoUser,
+    limitBodySize,
+    zValidator("form", uploadForm),
+    async (c) => {
+      const { file, category } = c.req.valid("form");
 
-    if (file.type !== "application/pdf") {
-      return c.json({ error: "Only PDF files are accepted" }, 415);
-    }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      return c.json({ error: "File must be 10MB or smaller" }, 413);
-    }
+      if (file.type !== "application/pdf") {
+        return c.json({ error: "Only PDF files are accepted" }, 415);
+      }
+      if (file.size > MAX_UPLOAD_BYTES) {
+        return c.json({ error: "File must be 10MB or smaller" }, 413);
+      }
 
-    // Not file.slice(): bun-types omits slice() from its Blob interface. The
-    // whole buffer is wanted anyway — the ingest worker takes it below, and
-    // this is the only copy, since there is no blob storage (SPEC §1).
-    const data = new Uint8Array(await file.arrayBuffer());
-    const header = data.subarray(0, PDF_MAGIC.length);
-    if (new TextDecoder().decode(header) !== PDF_MAGIC) {
-      return c.json({ error: "That file is not a PDF" }, 415);
-    }
+      // Not file.slice(): bun-types omits slice() from its Blob interface. The
+      // whole buffer is wanted anyway — the ingest worker takes it below, and
+      // this is the only copy, since there is no blob storage (SPEC §1).
+      const data = new Uint8Array(await file.arrayBuffer());
+      const header = data.subarray(0, PDF_MAGIC.length);
+      if (new TextDecoder().decode(header) !== PDF_MAGIC) {
+        return c.json({ error: "That file is not a PDF" }, 415);
+      }
 
-    const [row] = await db
-      .insert(documents)
-      .values({
-        userId: c.get("user").id,
-        filename: file.name,
-        category,
-      })
-      .returning(documentColumns);
+      const [row] = await db
+        .insert(documents)
+        .values({
+          userId: c.get("user").id,
+          filename: file.name,
+          category,
+        })
+        .returning(documentColumns);
 
-    if (!row) return c.json({ error: "Could not create the document" }, 500);
+      if (!row) return c.json({ error: "Could not create the document" }, 500);
 
-    // SPEC §3.2 step 3 — deliberately not awaited. The 202 goes out now, and
-    // ingest reports its own failures on the row rather than in this response.
-    void enqueueIngest(row.id, data, c.get("user").id);
+      // SPEC §3.2 step 3 — deliberately not awaited. The 202 goes out now, and
+      // ingest reports its own failures on the row rather than in this response.
+      void enqueueIngest(row.id, data, c.get("user").id);
 
-    return c.json(row, 202);
-  })
+      return c.json(row, 202);
+    },
+  )
 
   // A document owned by someone else must be indistinguishable from one that
   // does not exist, so both of these 404 rather than 403.
@@ -166,7 +177,7 @@ export const documentsRoutes = new Hono<SessionEnv>()
   })
 
   // chunks and messages cascade at the DB level (SPEC §4) — no manual cleanup.
-  .delete("/:id", async (c) => {
+  .delete("/:id", blockDemoUser, async (c) => {
     const [row] = await db
       .delete(documents)
       .where(

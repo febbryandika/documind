@@ -1,6 +1,14 @@
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+  type Mock,
+} from "vitest";
 
 // Two modules have to be mocked. ../auth reaches ../db and throws without
 // DATABASE_URL (vitest runs under node, which does not auto-load .env the way
@@ -454,5 +462,54 @@ describe("DELETE /documents/:id", () => {
 
     expect(res.status).toBe(404);
     await expect(res.json()).resolves.toEqual({ error: "Not found" });
+  });
+});
+
+// SPEC §11. middleware/demo-user.test.ts owns the guard's own behaviour; this
+// block is about the wiring — that it is mounted on the two routes that mutate,
+// and mounted early enough that a blocked upload never reaches the body parser
+// or the database.
+describe("demo account guard", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("blocks the demo account from uploading, before anything is read", async () => {
+    vi.stubEnv("DEMO_USER_EMAIL", SESSION.user.email);
+
+    const res = await upload(pdf());
+
+    expect(res.status).toBe(403);
+    expect(db.insert).not.toHaveBeenCalled();
+    expect(enqueueIngest).not.toHaveBeenCalled();
+  });
+
+  it("blocks the demo account from deleting", async () => {
+    vi.stubEnv("DEMO_USER_EMAIL", SESSION.user.email);
+
+    const res = await app.request("/documents/doc_1", { method: "DELETE" });
+
+    expect(res.status).toBe(403);
+    expect(db.delete).not.toHaveBeenCalled();
+  });
+
+  it("leaves the demo account able to open a document", async () => {
+    vi.stubEnv("DEMO_USER_EMAIL", SESSION.user.email);
+    db.select.mockReturnValueOnce(chain([ROW]));
+
+    const res = await app.request("/documents/doc_1");
+
+    expect(res.status).toBe(200);
+  });
+
+  it("does not block a real account when the demo user is configured", async () => {
+    vi.stubEnv("DEMO_USER_EMAIL", "demo@documind.app");
+    getSession.mockResolvedValue({
+      ...SESSION,
+      user: { ...SESSION.user, email: "owner@example.com" },
+    });
+    db.delete.mockReturnValueOnce(chain([{ id: "doc_1" }]));
+
+    const res = await app.request("/documents/doc_1", { method: "DELETE" });
+
+    expect(res.status).toBe(200);
   });
 });

@@ -2,6 +2,27 @@
 
 Operations document Q&A for small businesses — ask a question, get an answer cited to the page.
 
+## Live demo
+
+**https://REPLACE-ME.vercel.app** — filled in when the app is deployed (`docs/DEPLOYMENT.md`).
+
+```
+demo@documind.app
+documind-demo
+```
+
+Three operational documents are already ingested and `ready`, so nobody waits on an embed
+job. Upload and delete are blocked for this account (SPEC §11) — everything else works.
+
+| Document | Language | Try asking |
+|---|---|---|
+| `warehouse-safety.pdf` | English | What PPE is required in the cold storage area? |
+| `supplier-contract.pdf` | Japanese | 支払い条件は何日ですか？ |
+| `equipment-manual.pdf` | Mixed EN/JA | What is the maximum throughput of the machine? |
+
+The third is the interesting one: an English question against a document whose safety
+notice and quick reference are in Japanese.
+
 > **Status: scaffolding.** This README is a placeholder. The real one is written in build-order
 > step 12 and is the actual deliverable (SPEC §12).
 
@@ -174,6 +195,9 @@ docker compose up -d          # postgres + pgvector on :5432
 cd apps/api                   # Bun
 bun install
 cp .env.example .env
+bun run db:migrate
+bun run db:seed               # demo@documind.app + 3 ready documents
+                              # costs ~73 embeddings (~$0.001); safe to re-run
 bun run dev                   # http://localhost:3001
 
 cd ../web                     # pnpm — a separate install, not a workspace
@@ -183,3 +207,10 @@ pnpm dev                      # http://localhost:3000
 ```
 
 End-to-end tests need browsers once: `pnpm exec playwright install chromium`.
+
+## Deploying
+
+Vercel (web) · Fly.io (API) · Neon (Postgres + pgvector). The runbook — env-var matrix,
+the two-pass deploy the `NEXT_PUBLIC_*` build-time inlining forces, and how to seed the
+demo account without putting production secrets on a laptop — is in
+[`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
