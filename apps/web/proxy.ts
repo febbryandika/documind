@@ -15,6 +15,13 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // /sign-in and /sign-up must stay out of the matcher, or the redirect loops.
+  //
+  // The `api` exclusion also covers /api-proxy/* — the rewrite prefix that
+  // carries API traffic through this origin (next.config.ts) — because the
+  // lookahead only has to match the start of the path. That is load-bearing and
+  // not obvious: were those requests gated here, every unauthenticated call
+  // would be answered with a redirect to /sign-in instead of reaching the API,
+  // and sign-in itself could never complete.
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|sign-in|sign-up).*)",
   ],

@@ -1,0 +1,28 @@
+# apps/api is ~420MB on disk with node_modules. Without this the build context
+# alone would dwarf the image, and the deps stage reinstalls them anyway.
+node_modules
+
+# Secrets never enter an image. Fly holds these as `fly secrets` (SPEC §14).
+.env
+.env.*
+!.env.example
+
+# Nothing below is reachable at runtime.
+**/*.test.ts
+eval/
+dump-chunks.ts
+dump-retrieval.ts
+drizzle.config.ts
+tsconfig.json
+eslint.config.mjs
+.prettierrc
+.prettierignore
+.gitignore
+
+# The PDFs ship (the seed reads them); the HTML they were printed from does not.
+fixtures/*.html
+
+# Build inputs, not build outputs.
+Dockerfile
+.dockerignore
+fly.toml

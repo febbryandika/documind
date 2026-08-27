@@ -1,0 +1,54 @@
+# SPEC §11. `fly launch` will offer to rename this if the name is taken —
+# whatever it becomes has to match BETTER_AUTH_URL and the web app's API_ORIGIN.
+app = "documind-api"
+
+# Neon's documind project lives in aws-ap-southeast-1. Retrieval makes several
+# round trips per question, so the API sits next to the database rather than
+# next to the user.
+primary_region = "sin"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "3001"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+
+  # Ingest is an in-process background job (SPEC §6), so a machine that stops
+  # between requests drops work that already returned 202 to the caller.
+  #
+  # Both keys are set deliberately. `auto_stop_machines = 'off'` is what
+  # actually guarantees it — Fly only consults min_machines_running for machines
+  # it is otherwise allowed to stop. min_machines_running = 1 is the floor SPEC
+  # §11 mandates, and it becomes load-bearing the moment auto-stop is ever
+  # turned back on.
+  #
+  # src/middleware/rate-limit.ts counts questions in an in-memory Map, so its
+  # 20/hour/user limit is only correct while there is exactly one machine.
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = "requests"
+    soft_limit = 25
+    hard_limit = 50
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  # Worst case is MAX_CONCURRENT_INGESTS = 2 ingests of a 10MB / 200-page PDF,
+  # each buffered whole as a Uint8Array and then parsed by pdf.js. 256MB OOMs on
+  # that. In practice the demo user cannot upload, so production ingest load is
+  # just the seed — three files, ~1MB — and 512mb would do if cost matters more
+  # than headroom for a real upload.
+  memory = "1gb"
