@@ -57,6 +57,9 @@ const askBody = z.object({
     .max(1000),
 });
 
+/** Shown to the user when an answer dies part way through (SPEC §14). */
+const ANSWER_FAILED = "The answer stopped part way through. Please ask again.";
+
 // SPEC §8, verbatim. The four clauses are a contract the tests and the eval
 // both lean on: answer only from context, cite inline, match the question's
 // language, refuse rather than guess.
@@ -247,6 +250,32 @@ export const chatRoutes = new Hono<SessionEnv>()
                   .limit(HISTORY_MESSAGES),
               );
 
+              // A fixed sentence, never the underlying message: an OpenAI error
+              // body can echo a key prefix, which is the same reason
+              // src/rag/ingest.ts keeps an allow-list of what may be shown.
+              const streamFailed = (error: unknown) => {
+                const cause =
+                  error instanceof Error ? error.message : String(error);
+
+                // Both streams get this handler, and a model failure reaches
+                // both: toUIMessageStream sees the real error and turns it into
+                // the sentence, then createUIMessageStream sees that sentence as
+                // its own error. Logging it twice would read as two failures.
+                if (cause !== ANSWER_FAILED) {
+                  console.error(
+                    JSON.stringify({
+                      level: "error",
+                      requestId: c.get("requestId"),
+                      message: "answer stream failed",
+                      documentId: doc.id,
+                      cause,
+                    }),
+                  );
+                }
+
+                return ANSWER_FAILED;
+              };
+
               // No early return when hits is empty. An empty context plus the
               // system prompt is what produces a refusal *in the question's
               // language*; a hard-coded "not found" string here would always be
@@ -294,32 +323,25 @@ export const chatRoutes = new Hono<SessionEnv>()
 
                     // sendStart: false — `start` was already written above, and a
                     // second one would open a second message on the client.
+                    //
+                    // onError has to be *here*, not only on createUIMessageStream
+                    // below: this is where a failed model call is turned into an
+                    // error chunk, and the default masks it to "An error
+                    // occurred." before the outer handler ever sees it. Verified
+                    // against a stub that 500s on chat completions — with the
+                    // handler only on the outer stream, the client got the masked
+                    // string and so did the log.
                     writer.merge(
                       toUIMessageStream({
                         stream: result.stream,
                         sendStart: false,
+                        onError: streamFailed,
                       }),
                     );
                   },
-                  // Without this the SDK masks every stream failure as the
-                  // generic "An error occurred". A fixed string, not the real
-                  // message: an OpenAI error body can echo a key prefix, the same
-                  // reason src/rag/ingest.ts keeps an allow-list.
-                  onError: (error) => {
-                    console.error(
-                      JSON.stringify({
-                        level: "error",
-                        requestId: c.get("requestId"),
-                        message: "answer stream failed",
-                        documentId: doc.id,
-                        cause:
-                          error instanceof Error
-                            ? error.message
-                            : String(error),
-                      }),
-                    );
-                    return "The answer stopped part way through. Please ask again.";
-                  },
+                  // The outer stream's own failures — anything thrown by execute
+                  // itself rather than by the model call.
+                  onError: streamFailed,
                   // The one terminal hook for the streaming path — it runs whether
                   // the answer finished, errored or was aborted, so the span
                   // cannot leak.
