@@ -1,18 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, errorMessage, send } from "@/lib/api";
 import { messageKeys } from "@/lib/chat";
-
-/** Pull the API's `{ error }` body out of a failed response, with a fallback. */
-async function errorMessage(res: Response, fallback: string) {
-  try {
-    const body = (await res.json()) as { error?: unknown };
-    return typeof body.error === "string" ? body.error : fallback;
-  } catch {
-    return fallback;
-  }
-}
 
 /**
  * The stored thread for one document, oldest-first. This seeds useChat and is
@@ -23,9 +13,11 @@ export function useMessages(documentId: string) {
   return useQuery({
     queryKey: messageKeys.thread(documentId),
     queryFn: async ({ signal }) => {
-      const res = await api.documents[":id"].messages.$get(
-        { param: { id: documentId } },
-        { init: { signal } },
+      const res = await send(() =>
+        api.documents[":id"].messages.$get(
+          { param: { id: documentId } },
+          { init: { signal } },
+        ),
       );
 
       if (!res.ok)

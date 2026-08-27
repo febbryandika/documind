@@ -23,6 +23,7 @@ import {
   EXCERPT_CHARS,
   HISTORY_MESSAGES,
 } from "./chat";
+import { QUESTIONS_PER_HOUR } from "../middleware/rate-limit";
 import { documents } from "../db/schema";
 import type { Hit } from "../rag/retrieve";
 
@@ -240,5 +241,41 @@ describe("POST /:id/chat readiness", () => {
 
     expect(res.status).toBe(400);
     expect(retrieve).not.toHaveBeenCalled();
+  });
+});
+
+// The limiter has its own unit tests (middleware/rate-limit.test.ts). What can
+// only be checked here is that it is actually mounted on this route — the whole
+// guard is one argument in the .post() chain, and removing it would leave every
+// other test in this file green.
+describe("POST /:id/chat rate limit", () => {
+  it(`stops asking at ${QUESTIONS_PER_HOUR} questions an hour`, async () => {
+    // A user of its own: the limiter's counters live at module scope and are
+    // shared by every test in this file, so exhausting user_1 here would leak
+    // 429s into unrelated cases.
+    getSession.mockResolvedValue({
+      user: { id: "heavy_user", email: "heavy@documind.app", name: "Heavy" },
+      session: { id: "session_2", userId: "heavy_user" },
+    });
+    // Not ready, so each request stops at the 409 without reaching OpenAI —
+    // the limiter runs before that check either way.
+    db.select.mockReturnValue(chain([{ id: "doc_1", status: "processing" }]));
+
+    const ask = () =>
+      app.request("/documents/doc_1/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question: "What PPE is required?" }),
+      });
+
+    for (let i = 0; i < QUESTIONS_PER_HOUR; i++) {
+      expect((await ask()).status).toBe(409);
+    }
+
+    const res = await ask();
+
+    expect(res.status).toBe(429);
+    const { error } = (await res.json()) as { error: string };
+    expect(error).toContain(`${QUESTIONS_PER_HOUR} questions`);
   });
 });

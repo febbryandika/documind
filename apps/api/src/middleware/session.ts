@@ -8,6 +8,10 @@ export type SessionEnv = {
   Variables: {
     user: typeof auth.$Infer.Session.user;
     session: typeof auth.$Infer.Session.session;
+    // Set by requestLog before anything else runs, so it is available on every
+    // route including the ones with no session. It lives here because SessionEnv
+    // is the single Env all three routers are generic over.
+    requestId: string;
   };
 };
 

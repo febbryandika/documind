@@ -1,6 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { HTTPException } from "hono/http-exception";
 import { auth, webOrigin } from "./auth";
+import { requestLog } from "./middleware/request-log";
 import { sessionMiddleware, type SessionEnv } from "./middleware/session";
 import { failStaleIngests } from "./rag/ingest";
 import { chatRoutes } from "./routes/chat";
@@ -12,6 +14,9 @@ import { documentsRoutes } from "./routes/documents";
 // SessionEnv is declared on the app so `c.get("user")` is typed; it is only
 // actually populated on routes that mount sessionMiddleware.
 const app = new Hono<SessionEnv>()
+  // First, so a rejected preflight is still one log line and every response
+  // carries an x-request-id.
+  .use("*", requestLog)
   // Sessions are httpOnly cookies, so the browser only sends them when the exact
   // web origin is allowed with credentials (SPEC §14). Never a wildcard.
   .use("*", cors({ origin: webOrigin, credentials: true }))
@@ -25,7 +30,37 @@ const app = new Hono<SessionEnv>()
   // Mounted at the same prefix on purpose: /:id/chat and /:id/messages belong
   // to the document they hang off, but they are a different concern from CRUD.
   // Hono merges the two schemas, so AppType still carries both.
-  .route("/documents", chatRoutes);
+  .route("/documents", chatRoutes)
+
+  // Chained, not `app.onError(...)` as a separate statement — the same reason
+  // the routes are (see above): AppType is inferred from this builder.
+  .notFound((c) => c.json({ error: "Not found" }, 404))
+  .onError((error, c) => {
+    // Anything that threw an HTTPException chose its own status; honour it
+    // rather than flattening every failure to 500.
+    if (error instanceof HTTPException) return error.getResponse();
+
+    const requestId = c.get("requestId");
+    console.error(
+      JSON.stringify({
+        level: "error",
+        requestId,
+        route: c.req.routePath,
+        message: error.message,
+        stack: error.stack,
+      }),
+    );
+
+    // Never error.message. src/rag/ingest.ts keeps an allow-list for exactly
+    // this reason: a missing-key error names the env var and an OpenAI 401 body
+    // echoes a key prefix. The id is what makes the generic message reportable.
+    return c.json(
+      {
+        error: `Something went wrong on our end. Please try again. If it keeps happening, quote reference ${requestId}.`,
+      },
+      500,
+    );
+  });
 
 export { app };
 
@@ -44,6 +79,12 @@ export type { DocumentUIMessage, Source } from "./routes/chat";
 // flag is Bun's, and apps/web typechecks this file via its type-only AppType
 // import (SPEC §5) without bun types on its side.
 if ((import.meta as { main?: boolean }).main) {
+  // SPEC §13 — before the first request, and deliberately not a static import:
+  // this is the one place tracing is switched on, so the test suites and the
+  // one-shot scripts (eval/run.ts, dump-*.ts) never start an exporter. Nothing
+  // is monkey-patched, so load order past this point does not matter.
+  await import("./instrumentation");
+
   void failStaleIngests().then((swept) => {
     if (swept > 0) console.log(`Failed ${swept} document(s) left by a restart`);
   });
