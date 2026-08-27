@@ -1,0 +1,41 @@
+# Build context is the whole repo (the Dockerfile sits here so Fly's
+# GitHub-connected deploys can find it), so everything the API image does not
+# need is excluded explicitly.
+
+# The web app is deployed by Vercel and has no business in this image. Its
+# node_modules alone is larger than the image.
+apps/web
+
+# ~420MB in apps/api; the deps stage reinstalls from the lockfile anyway.
+**/node_modules
+
+# Secrets never enter an image. Fly holds these as app secrets (SPEC §14).
+**/.env
+**/.env.*
+!**/.env.example
+
+# Nothing below is reachable at runtime.
+**/*.test.ts
+apps/api/eval
+apps/api/dump-chunks.ts
+apps/api/dump-retrieval.ts
+apps/api/drizzle.config.ts
+apps/api/tsconfig.json
+apps/api/eslint.config.mjs
+apps/api/.prettierrc
+apps/api/.prettierignore
+
+# The PDFs ship (the seed reads them); the HTML they were printed from does not.
+apps/api/fixtures/*.html
+
+# Repo furniture and build inputs.
+.git
+.github
+.idea
+.claude
+docs
+README.md
+docker-compose.yml
+Dockerfile
+.dockerignore
+fly.toml

@@ -1,3 +1,8 @@
+# Builds apps/api — the Hono/Bun API. It lives at the repo root, with the whole
+# repo as its build context, because Fly's GitHub-connected deploys look for
+# Dockerfile and fly.toml here and do not take a subdirectory. apps/web is
+# excluded in .dockerignore, so the context stays small.
+#
 # The API is a long-lived Bun process, not a serverless function — that is the
 # whole reason ingest can run in-process rather than behind a queue (SPEC §1,
 # §6). So this image runs Bun directly: apps/api has no build and no start
@@ -8,7 +13,7 @@ FROM oven/bun:1.3-slim AS deps
 WORKDIR /app
 # Manifest and lockfile only, so this layer stays cached until a dependency
 # actually moves. --production drops drizzle-kit, vitest and eslint.
-COPY package.json bun.lock ./
+COPY apps/api/package.json apps/api/bun.lock ./
 RUN bun install --frozen-lockfile --production
 
 FROM oven/bun:1.3-slim AS release
@@ -19,14 +24,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json bun.lock ./
-COPY src ./src
-COPY drizzle ./drizzle
-# The demo seed runs inside the machine (`fly ssh console`), so the three demo
-# PDFs ship with it — that keeps the production DATABASE_URL and OPENAI_API_KEY
-# off a laptop entirely. ~1MB; .dockerignore drops the .html sources they were
-# printed from.
-COPY fixtures ./fixtures
+COPY apps/api/package.json apps/api/bun.lock ./
+COPY apps/api/src ./src
+COPY apps/api/drizzle ./drizzle
+# The seed reads these, so the three demo PDFs ship with the image. ~1MB;
+# .dockerignore drops the .html sources they were printed from.
+COPY apps/api/fixtures ./fixtures
 
 # Fly injects PORT itself; src/index.ts falls back to 3001 (SPEC §11).
 EXPOSE 3001

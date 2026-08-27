@@ -1,4 +1,9 @@
-# SPEC §11. `fly launch` will offer to rename this if the name is taken —
+# SPEC §11. This file and the Dockerfile sit at the repo root, not next to the
+# API in apps/api, because Fly's GitHub-connected deploys look for them here and
+# do not accept a subdirectory. The build context is the whole repo; see
+# .dockerignore.
+#
+# App names are unique across all of Fly, so this one may already be taken —
 # whatever it becomes has to match BETTER_AUTH_URL and the web app's API_ORIGIN.
 app = "documind-api"
 
