@@ -171,6 +171,16 @@ export function UploadForm() {
             />
           </div>
 
+          {/* Also toasted (hooks/use-documents.ts), but a toast times out while
+              the file is still sitting in the form. A rejected upload is
+              actionable — wrong type, too large — so the reason stays on screen
+              next to the thing that has to change. */}
+          {upload.isError && (
+            <p role="alert" className="text-destructive text-sm">
+              {upload.error.message}
+            </p>
+          )}
+
           <Button type="submit" disabled={upload.isPending}>
             {upload.isPending ? "Uploading…" : "Upload"}
           </Button>

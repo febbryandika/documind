@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useMessages } from "@/hooks/use-messages";
+import { explainStreamError } from "@/lib/api";
 import { messageKeys, type ChatMessage } from "@/lib/chat";
 // Type-only, like AppType: the API owns the shape of the data-sources part
 // (SPEC §5). A value import here would break the two-deploy split.
@@ -124,7 +125,7 @@ function ChatPanel({
     register,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { question: "" },
@@ -136,9 +137,19 @@ function ChatPanel({
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages.length]);
 
+  // Cleared when the answer starts arriving, not when the question is sent.
+  // Clearing on send loses the question whenever the send fails — a 429 from
+  // the hourly limit, a 503 while search is down, the API unreachable — and a
+  // failure the user did not cause should not cost them their typing.
+  // `submitted` is not enough: a request that never gets a response passes
+  // through it too. sendMessage cannot be awaited for this; it routes failures
+  // to `error` and never rejects.
+  useEffect(() => {
+    if (status === "streaming") reset();
+  }, [status, reset]);
+
   const ask = handleSubmit(({ question }) => {
     void sendMessage({ text: question });
-    reset();
   });
 
   return (
@@ -186,9 +197,24 @@ function ChatPanel({
       )}
 
       {error && (
-        <p role="alert" className="text-destructive text-sm">
-          {error.message}
-        </p>
+        <div role="alert" className="flex flex-col gap-1">
+          <p className="text-destructive text-sm">
+            {explainStreamError(
+              error,
+              "The answer could not be loaded. Please try again.",
+            )}
+          </p>
+          {/* isDirty is the evidence, not a flag we set: reset() runs only once
+              an answer starts arriving, so a form still dirty after a failure is
+              one whose question never went out. A failure part way through an
+              answer happens after the reset, and claiming otherwise would send
+              the user looking for text that is not there. */}
+          {isDirty && (
+            <p className="text-muted-foreground text-sm">
+              Your question is still in the box below — you can send it again.
+            </p>
+          )}
+        </div>
       )}
 
       <div ref={endRef} />

@@ -1,7 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
 import { and, count, desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
-import { createMiddleware } from "hono/factory";
+import { bodyLimit } from "hono/body-limit";
 import * as z from "zod";
 import { db } from "../db";
 import { documents } from "../db/schema";
@@ -11,7 +11,7 @@ import { enqueueIngest } from "../rag/ingest";
 export const CATEGORIES = ["contract", "manual", "procedure", "other"] as const;
 export const STATUSES = ["processing", "ready", "failed"] as const;
 
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // SPEC §14
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // SPEC §14
 // Every PDF starts with this five-byte header. The declared Content-Type is
 // attacker-controlled — and Bun derives file.type from the filename extension
 // rather than the part header anyway — so the type check is a cheap first pass
@@ -67,14 +67,19 @@ export function documentFilters(
 }
 
 // zValidator("form") calls parseBody(), which buffers the whole body — so a cap
-// enforced on file.size afterwards has already paid the memory cost. Rejecting
-// on Content-Length first is what actually bounds an upload.
-const limitBodySize = createMiddleware(async (c, next) => {
-  const declared = Number(c.req.header("content-length"));
-  if (Number.isFinite(declared) && declared > MAX_UPLOAD_BYTES) {
-    return c.json({ error: "File must be 10MB or smaller" }, 413);
-  }
-  await next();
+// enforced on file.size afterwards has already paid the memory cost. This is
+// what actually bounds an upload.
+//
+// Hono's own bodyLimit rather than the Content-Length check this used to be: a
+// request that omits the header, or sends Transfer-Encoding: chunked, has no
+// declared length to check, and the old guard let exactly those through to
+// parseBody() unbounded. bodyLimit reads the stream and stops at the cap, so
+// the ceiling holds whether or not the client declares anything.
+const limitBodySize = bodyLimit({
+  maxSize: MAX_UPLOAD_BYTES,
+  // The default throws a text/plain "Payload Too Large"; the web client reads
+  // { error } (apps/web/lib/api.ts) and users read the sentence.
+  onError: (c) => c.json({ error: "File must be 10MB or smaller" }, 413),
 });
 
 export const documentsRoutes = new Hono<SessionEnv>()
@@ -137,7 +142,7 @@ export const documentsRoutes = new Hono<SessionEnv>()
 
     // SPEC §3.2 step 3 — deliberately not awaited. The 202 goes out now, and
     // ingest reports its own failures on the row rather than in this response.
-    void enqueueIngest(row.id, data);
+    void enqueueIngest(row.id, data, c.get("user").id);
 
     return c.json(row, 202);
   })

@@ -40,6 +40,11 @@ export async function retrieve(
   documentId: string,
   question: string,
   k = RETRIEVAL_K,
+  // SPEC §13. Passed in rather than imported: eval/run.ts calls retrieve() 15
+  // times per run, and keeping this module free of any Langfuse import is what
+  // stops the eval from pushing spans while it measures. Omitted here, the flag
+  // is simply absent and ai@7 emits nothing.
+  telemetry?: { functionId: string },
 ): Promise<Hit[]> {
   // Must stay the model ingest embedded with (src/rag/ingest.ts). Both sides of
   // a cosine comparison have to come out of the same vector space; a mismatch
@@ -47,6 +52,7 @@ export async function retrieve(
   const { embedding } = await embed({
     model: openai.textEmbeddingModel("text-embedding-3-small"),
     value: question,
+    telemetry,
   });
 
   const similarity = sql<number>`1 - (${cosineDistance(chunks.embedding, embedding)})`;

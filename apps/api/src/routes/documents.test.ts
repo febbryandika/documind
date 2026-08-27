@@ -24,7 +24,11 @@ vi.mock("../db", () => ({ db }));
 // own catch and be swallowed rather than surface as a failing assertion.
 vi.mock("../rag/ingest", () => ({ enqueueIngest }));
 
-import { documentFilters, documentsRoutes } from "./documents";
+import {
+  documentFilters,
+  documentsRoutes,
+  MAX_UPLOAD_BYTES,
+} from "./documents";
 import { documents } from "../db/schema";
 
 const app = new Hono().route("/documents", documentsRoutes);
@@ -305,6 +309,30 @@ describe("POST /documents", () => {
     expect(enqueueIngest).not.toHaveBeenCalled();
   });
 
+  // The regression this guard was rewritten for. The old check read
+  // Content-Length and let anything without one straight through to
+  // parseBody(), so the 10MB ceiling came off by simply not declaring a size.
+  it("rejects an oversized upload that declares no Content-Length", async () => {
+    const oversized = new Uint8Array(MAX_UPLOAD_BYTES + 1024);
+    const res = await app.request("/documents", {
+      method: "POST",
+      headers: { "content-type": "multipart/form-data; boundary=x" },
+      // A ReadableStream body: fetch cannot compute a length for it, which is
+      // exactly the case the header check could not see.
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(oversized);
+          controller.close();
+        },
+      }),
+      duplex: "half",
+    } as RequestInit);
+
+    expect(res.status).toBe(413);
+    expect(db.insert).not.toHaveBeenCalled();
+    expect(enqueueIngest).not.toHaveBeenCalled();
+  });
+
   it("rejects a request with no file part", async () => {
     const body = new FormData();
     body.append("category", "manual");
@@ -325,15 +353,18 @@ describe("POST /documents", () => {
   });
 
   // The whole buffer, not the five bytes the magic-byte check read — this is
-  // the only copy of the PDF, since there is no blob storage (SPEC §1).
-  it("hands the whole uploaded buffer to the ingest worker", async () => {
+  // the only copy of the PDF, since there is no blob storage (SPEC §1). The
+  // owner goes with it: the worker runs detached from this request and cannot
+  // read a session, so this is the only point the ingest trace can be
+  // attributed to a user (SPEC §13).
+  it("hands the whole uploaded buffer and the owner to the ingest worker", async () => {
     db.insert.mockReturnValueOnce(chain([ROW]));
     const file = pdf();
     const bytes = new Uint8Array(await file.arrayBuffer());
 
     await upload(file);
 
-    expect(enqueueIngest).toHaveBeenCalledWith(ROW.id, bytes);
+    expect(enqueueIngest).toHaveBeenCalledWith(ROW.id, bytes, SESSION.user.id);
   });
 
   // SPEC §3.2 — ingest is a multi-second job, so the 202 cannot wait on it.

@@ -1,6 +1,11 @@
 // SPEC §6 — extract → chunk → embed → store, plus the in-process worker that
 // owns it. There is no queue (SPEC §1): the Hono API is a long-lived Bun
 // process, which is the entire reason it is not serverless.
+import {
+  propagateAttributes,
+  startActiveObservation,
+  type LangfuseSpan,
+} from "@langfuse/tracing";
 import { openai } from "@ai-sdk/openai";
 import { embedMany } from "ai";
 import { and, eq, lt } from "drizzle-orm";
@@ -45,7 +50,7 @@ export const STALE_INGEST_MS = 10 * 60 * 1000;
 export const PAGE_LIMIT_ERROR = `This PDF has more than ${MAX_PAGES} pages — split it into smaller files`;
 
 export const EMBED_ERROR =
-  "Could not generate embeddings — the OpenAI request failed";
+  "This document could not be prepared for search because the AI service did not respond";
 
 export const INGEST_ERROR =
   "Could not process this PDF — it may be damaged or password-protected";
@@ -70,7 +75,30 @@ const userMessage = (error: unknown) =>
  * SPEC §6. Never throws: the caller already has its 202 (SPEC §3.2), so the row
  * is the only channel a failure can be reported through.
  */
-export async function ingest(documentId: string, data: Uint8Array) {
+export async function ingest(
+  documentId: string,
+  data: Uint8Array,
+  // SPEC §13 wants userId on the trace, and this worker runs detached from the
+  // request that started it (SPEC §3.2), so it cannot read a session. Optional
+  // because eval/run.ts ingests the fixtures with no real user behind them.
+  userId?: string,
+) {
+  // One trace per document, which is what makes cost-per-document a single
+  // number to read rather than N embedMany calls to add up (SPEC §13). Detached
+  // from any request, so this is always a fresh root.
+  return startActiveObservation("ingest-document", (span) =>
+    propagateAttributes(
+      { traceName: "ingest-document", userId, sessionId: documentId },
+      () => runIngest(documentId, data, span),
+    ),
+  );
+}
+
+async function runIngest(
+  documentId: string,
+  data: Uint8Array,
+  span: LangfuseSpan,
+) {
   try {
     const { totalPages, pages } = await extractPdfText(data);
 
@@ -91,7 +119,19 @@ export async function ingest(documentId: string, data: Uint8Array) {
       const { embeddings } = await embedMany({
         model: openai.textEmbeddingModel("text-embedding-3-small"),
         values: batch.map((piece) => piece.content),
-      }).catch(() => {
+        telemetry: { functionId: "embed-chunks" },
+      }).catch((cause: unknown) => {
+        // The rewrite below is deliberate — see USER_FACING above; an OpenAI
+        // error body can echo a key prefix. But the original is the only thing
+        // that says *why*, so it goes to the log before it is discarded.
+        console.error(
+          JSON.stringify({
+            level: "error",
+            message: "embedMany failed",
+            documentId,
+            cause: cause instanceof Error ? cause.message : String(cause),
+          }),
+        );
         throw new Error(EMBED_ERROR);
       });
 
@@ -129,6 +169,15 @@ export async function ingest(documentId: string, data: Uint8Array) {
           language: detectLanguage(pages.join("")),
         })
         .where(eq(documents.id, documentId));
+    });
+
+    // Cost per page is the more portable figure — the fixtures are 10-13 pages,
+    // a real manual is not.
+    span.update({
+      metadata: {
+        pageCount: String(totalPages),
+        chunkCount: String(rows.length),
+      },
     });
   } catch (error) {
     await db
@@ -183,9 +232,13 @@ function acquire(): Promise<void> {
  * Swallowing here is what stops an unhandled rejection from taking the whole
  * Bun process down, since nothing awaits this promise in production.
  */
-export function enqueueIngest(documentId: string, data: Uint8Array) {
+export function enqueueIngest(
+  documentId: string,
+  data: Uint8Array,
+  userId?: string,
+) {
   return acquire()
-    .then(() => ingest(documentId, data))
+    .then(() => ingest(documentId, data, userId))
     .catch(() => {})
     .finally(release);
 }

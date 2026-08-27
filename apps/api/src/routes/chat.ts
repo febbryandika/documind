@@ -7,6 +7,7 @@
 // nothing rather than five weak passages, and the system prompt below, which
 // tells the model to say so plainly when the context does not cover the
 // question. Neither is decorative.
+import { propagateAttributes, startActiveObservation } from "@langfuse/tracing";
 import { openai } from "@ai-sdk/openai";
 import { zValidator } from "@hono/zod-validator";
 import {
@@ -22,8 +23,9 @@ import { Hono } from "hono";
 import * as z from "zod";
 import { db } from "../db";
 import { documents, messages } from "../db/schema";
+import { createQuestionRateLimit } from "../middleware/rate-limit";
 import { sessionMiddleware, type SessionEnv } from "../middleware/session";
-import { retrieve, type Hit } from "../rag/retrieve";
+import { retrieve, RETRIEVAL_K, type Hit } from "../rag/retrieve";
 
 /** The citation payload, taken from the column so the two cannot drift. */
 export type Source = NonNullable<
@@ -148,70 +150,188 @@ function ownedDocument(id: string, userId: string) {
     .limit(1);
 }
 
+// SPEC §14. Built once at module scope so every request shares one set of
+// counters; a limiter constructed per request would count to one forever.
+const questionRateLimit = createQuestionRateLimit();
+
 export const chatRoutes = new Hono<SessionEnv>()
   .use("*", sessionMiddleware)
 
   // SPEC §3.4 — embed the question, cosine top-5 within this document, numbered
   // context, streamed answer. Sources go out before the first token.
-  .post("/:id/chat", zValidator("json", askBody), async (c) => {
-    const { question } = c.req.valid("json");
+  //
+  // The limiter sits after sessionMiddleware because it keys on the user, and
+  // before the validator because a rejected question should not reach OpenAI.
+  .post(
+    "/:id/chat",
+    questionRateLimit,
+    zValidator("json", askBody),
+    async (c) => {
+      const { question } = c.req.valid("json");
 
-    const [doc] = await ownedDocument(c.req.param("id"), c.get("user").id);
-    // Someone else's document must be indistinguishable from a missing one.
-    if (!doc) return c.json({ error: "Not found" }, 404);
-    if (doc.status !== "ready") {
-      return c.json({ error: "This document is not ready yet" }, 409);
-    }
+      const [doc] = await ownedDocument(c.req.param("id"), c.get("user").id);
+      // Someone else's document must be indistinguishable from a missing one.
+      if (!doc) return c.json({ error: "Not found" }, 404);
+      if (doc.status !== "ready") {
+        return c.json({ error: "This document is not ready yet" }, 409);
+      }
 
-    const hits = await retrieve(doc.id, question);
-    const { context, sources } = buildContext(hits);
+      // SPEC §13 — one trace per question, so the embed and the generation are two
+      // children of one thing rather than two unrelated roots.
+      //
+      // endOnExit: false because this handler returns as soon as the stream is
+      // *constructed*; the tokens are still arriving afterwards. The span is
+      // closed from the UI message stream's own onEnd below, which is the one hook
+      // that fires whether the answer completed or failed.
+      return startActiveObservation(
+        "ask-question",
+        (span) =>
+          propagateAttributes(
+            {
+              traceName: "ask-question",
+              userId: c.get("user").id,
+              // A chat thread is per-document, so the document *is* the session.
+              sessionId: doc.id,
+            },
+            async () => {
+              let hits: Hit[];
+              try {
+                hits = await retrieve(doc.id, question, RETRIEVAL_K, {
+                  functionId: "embed-question",
+                });
+              } catch (error) {
+                // Previously this escaped the handler into Hono's default empty
+                // 500. OpenAI being unreachable is temporary and specific, and
+                // saying so is more use than "something went wrong".
+                console.error(
+                  JSON.stringify({
+                    level: "error",
+                    requestId: c.get("requestId"),
+                    message: "retrieve failed",
+                    documentId: doc.id,
+                    cause:
+                      error instanceof Error ? error.message : String(error),
+                  }),
+                );
+                span.end();
+                return c.json(
+                  {
+                    error:
+                      "Search is temporarily unavailable. Please try again in a moment.",
+                  },
+                  503,
+                );
+              }
 
-    const history = toHistory(
-      await db
-        .select({ role: messages.role, content: messages.content })
-        .from(messages)
-        .where(eq(messages.documentId, doc.id))
-        .orderBy(desc(messages.createdAt))
-        .limit(HISTORY_MESSAGES),
-    );
+              const { context, sources } = buildContext(hits);
 
-    // No early return when hits is empty. An empty context plus the system
-    // prompt is what produces a refusal *in the question's language*; a
-    // hard-coded "not found" string here would always be English.
-    return createUIMessageStreamResponse({
-      stream: createUIMessageStream<DocumentUIMessage>({
-        execute: ({ writer }) => {
-          writer.write({ type: "start" });
-          // SPEC §8 — the sources part precedes the text, so citation chips
-          // render immediately instead of after the answer completes.
-          writer.write({ type: "data-sources", data: sources });
+              // SPEC §13's second reason for tracing at all: a bad answer is
+              // diagnosed by what retrieval handed the model, so the top hit's
+              // score has to be on the trace next to the answer itself.
+              span.update({
+                input: question,
+                metadata: {
+                  hitCount: String(hits.length),
+                  topSimilarity: hits[0]
+                    ? hits[0].similarity.toFixed(3)
+                    : "no-hits",
+                },
+              });
 
-          const result = streamText({
-            // .chat() rather than SPEC §8's bare openai(...): the bare callable
-            // now resolves to the Responses API and an experimental model type,
-            // while gpt-4o-mini here only needs plain chat completions.
-            model: openai.chat("gpt-4o-mini"),
-            system: SYSTEM_PROMPT + context,
-            messages: [...history, { role: "user", content: question }],
-            // v7 renamed onFinish to onEnd; onFinish is a deprecated alias.
-            onEnd: ({ text }) => {
-              // The user is already reading this answer. A failed write must
-              // never propagate into the stream and truncate it.
-              void persist(doc.id, question, text, sources).catch((error) => {
-                console.error("Could not persist chat messages", error);
+              const history = toHistory(
+                await db
+                  .select({ role: messages.role, content: messages.content })
+                  .from(messages)
+                  .where(eq(messages.documentId, doc.id))
+                  .orderBy(desc(messages.createdAt))
+                  .limit(HISTORY_MESSAGES),
+              );
+
+              // No early return when hits is empty. An empty context plus the
+              // system prompt is what produces a refusal *in the question's
+              // language*; a hard-coded "not found" string here would always be
+              // English.
+              return createUIMessageStreamResponse({
+                stream: createUIMessageStream<DocumentUIMessage>({
+                  execute: ({ writer }) => {
+                    writer.write({ type: "start" });
+                    // SPEC §8 — the sources part precedes the text, so citation
+                    // chips render immediately instead of after the answer
+                    // completes.
+                    writer.write({ type: "data-sources", data: sources });
+
+                    const result = streamText({
+                      // .chat() rather than SPEC §8's bare openai(...): the bare
+                      // callable now resolves to the Responses API and an
+                      // experimental model type, while gpt-4o-mini here only needs
+                      // plain chat completions.
+                      model: openai.chat("gpt-4o-mini"),
+                      system: SYSTEM_PROMPT + context,
+                      messages: [
+                        ...history,
+                        { role: "user", content: question },
+                      ],
+                      telemetry: { functionId: "answer-question" },
+                      // v7 renamed onFinish to onEnd; onFinish is a deprecated
+                      // alias.
+                      onEnd: ({ text }) => {
+                        // Recorded, not ended — the span is closed by the stream's
+                        // own onEnd below, which also covers the failure path.
+                        span.update({ output: text });
+
+                        // The user is already reading this answer. A failed write
+                        // must never propagate into the stream and truncate it.
+                        void persist(doc.id, question, text, sources).catch(
+                          (error) => {
+                            console.error(
+                              "Could not persist chat messages",
+                              error,
+                            );
+                          },
+                        );
+                      },
+                    });
+
+                    // sendStart: false — `start` was already written above, and a
+                    // second one would open a second message on the client.
+                    writer.merge(
+                      toUIMessageStream({
+                        stream: result.stream,
+                        sendStart: false,
+                      }),
+                    );
+                  },
+                  // Without this the SDK masks every stream failure as the
+                  // generic "An error occurred". A fixed string, not the real
+                  // message: an OpenAI error body can echo a key prefix, the same
+                  // reason src/rag/ingest.ts keeps an allow-list.
+                  onError: (error) => {
+                    console.error(
+                      JSON.stringify({
+                        level: "error",
+                        requestId: c.get("requestId"),
+                        message: "answer stream failed",
+                        documentId: doc.id,
+                        cause:
+                          error instanceof Error
+                            ? error.message
+                            : String(error),
+                      }),
+                    );
+                    return "The answer stopped part way through. Please ask again.";
+                  },
+                  // The one terminal hook for the streaming path — it runs whether
+                  // the answer finished, errored or was aborted, so the span
+                  // cannot leak.
+                  onEnd: () => span.end(),
+                }),
               });
             },
-          });
-
-          // sendStart: false — `start` was already written above, and a second
-          // one would open a second message on the client.
-          writer.merge(
-            toUIMessageStream({ stream: result.stream, sendStart: false }),
-          );
-        },
-      }),
-    });
-  })
+          ),
+        { endOnExit: false },
+      );
+    },
+  )
 
   // SPEC §3.5 — oldest first, so the UI renders it in order as it arrives.
   .get("/:id/messages", async (c) => {

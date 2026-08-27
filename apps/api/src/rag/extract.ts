@@ -7,7 +7,8 @@ import { extractText, getDocumentProxy } from "unpdf";
  * and this module is the one that can be tested against a fixture without
  * reaching for the database.
  */
-export const NO_TEXT_ERROR = "No extractable text — is this a scanned PDF?";
+export const NO_TEXT_ERROR =
+  "This PDF has no text in it — it looks like a scan or a photo of a document, and only a PDF with selectable text can be searched";
 
 export type ExtractedPdf = { totalPages: number; pages: string[] };
 
