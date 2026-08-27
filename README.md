@@ -210,7 +210,11 @@ End-to-end tests need browsers once: `pnpm exec playwright install chromium`.
 
 ## Deploying
 
-Vercel (web) · Fly.io (API) · Neon (Postgres + pgvector). The runbook — env-var matrix,
-the two-pass deploy the `NEXT_PUBLIC_*` build-time inlining forces, and how to seed the
-demo account without putting production secrets on a laptop — is in
+Vercel (web) · Fly.io (API) · Neon (Postgres + pgvector). Both apps deploy from their own
+dashboards, connected to this repo — no CLI, nothing installed locally, and no GitHub
+Actions. `Dockerfile` and `fly.toml` sit at the repo root because that is where Fly's
+GitHub-connected deploys look for them; `.dockerignore` keeps `apps/web` out of the image.
+
+The click-by-click guide, the env-var matrix, and why the web app proxies API traffic
+through its own origin instead of calling Fly directly are in
 [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
